@@ -157,4 +157,4 @@ buildscript {
 apply(plugin = "ca.islandora.gradle.docker")
 ```
 
-[Buildkit]: https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/experimental.md
+[Buildkit]: https://github.com/moby/buildkit/blob/main/frontend/dockerfile/docs/experimental.md
