@@ -24,7 +24,7 @@ jobs:
     - name: Set Version Environment Variable
       run: |
         export NEW_VERSION=$(echo "${GITHUB_REF}" | cut -d "/" -f3)
-        echo "::set-env name=NEW_VERSION::$NEW_VERSION"
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
     - name: Publish Gradle Plugin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
