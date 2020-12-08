@@ -59,13 +59,10 @@ data class BindMount(val from: String, val source: String, val target: String) {
 }
 
 //--mount=type=bind,from=imagemagick,source=/home/builder/packages/x86_64,target=/packages
-// Generate a list of image tags for the given image, using the project, version and tag properties.
+// Generate a list of image tags for the given image, using the project, and tag properties.
 fun imagesTags(image: String, project: Project): Set<String> {
     val tags = properties.getOrDefault("tags", "") as String
-    return setOf(
-            "$image:latest",
-            "$image:${project.version}"
-    ) + tags.split(' ').filter { it.isNotEmpty() }.map { "$image:$it" }
+    return setOf("$image:latest") + tags.split(' ').filter { it.isNotEmpty() }.map { "$image:$it" }
 }
 
 fun imageExists(project: Project, imageIdFile: RegularFileProperty) = try {
