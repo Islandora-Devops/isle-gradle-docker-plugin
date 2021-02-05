@@ -153,18 +153,13 @@ subprojects {
             destFile.set(buildDir.resolve("Dockerfile"))
         }
 
-        val prepareContext = tasks.register<Sync>("prepareContext") {
-            from(projectDir)
-            from(createDockerfile.map { it.destFile.get() })
-            into(buildDir.resolve("context"))
-        }
-
         val buildDockerImage = if (useBuildKit.toBoolean()) {
             tasks.register<DockerBuildKitBuildImage>("build") {
                 group = "islandora"
                 description = "Creates Docker image."
+                dockerFile.set(createDockerfile.map { it.destFile.get() })
                 images.addAll(imageTags)
-                inputDir.set(layout.dir(prepareContext.map { it.destinationDir }))
+                inputDir.set(projectDir)
                 // Use the remote cache to build this image if possible.
                 cacheFrom.addAll(cachedImageTags)
                 // Allow image to be used as a cache when building on other machine.
@@ -178,8 +173,9 @@ subprojects {
             tasks.register<DockerBuildImage>("build") {
                 group = "islandora"
                 description = "Creates Docker image."
+                dockerFile.set(createDockerfile.map { it.destFile.get() })
                 images.addAll(imageTags)
-                inputDir.set(layout.dir(prepareContext.map { it.destinationDir }))
+                inputDir.set(projectDir)
                 // Check that so other process has not removed the image since it was last built.
                 outputs.upToDateWhen { task ->
                     imageExists(project, (task as DockerBuildImage).imageIdFile)
@@ -241,6 +237,10 @@ subprojects {
 // Override the DockerBuildImage command to use the CLI since BuildKit is not supported in the java docker api.
 // https://github.com/docker-java/docker-java/issues/1381
 open class DockerBuildKitBuildImage : DefaultTask() {
+    @InputFile
+    @PathSensitive(PathSensitivity.RELATIVE)
+    val dockerFile = project.objects.fileProperty()
+
     @InputDirectory
     @PathSensitive(PathSensitivity.RELATIVE)
     val inputDir = project.objects.directoryProperty()
@@ -266,7 +266,7 @@ open class DockerBuildKitBuildImage : DefaultTask() {
     init {
         logging.captureStandardOutput(LogLevel.INFO)
         logging.captureStandardError(LogLevel.ERROR)
-        imageIdFile.set(project.buildDir.resolve(".docker/${path.replace(":", "_")}-imageId.txt"))
+        imageIdFile.set(project.buildDir.resolve("${path.replace(":", "_")}-imageId.txt"))
     }
 
     private fun cacheFromValid(image: String): Boolean {
@@ -286,6 +286,7 @@ open class DockerBuildKitBuildImage : DefaultTask() {
     @TaskAction
     fun exec() {
         val command = mutableListOf("docker", "build", "--progress=plain")
+        command.addAll(listOf("--file", dockerFile.get().asFile.absolutePath))
         command.addAll(cacheFrom.get().filter { cacheFromValid(it) }.flatMap { listOf("--cache-from", it) })
         command.addAll(buildArgs.get().flatMap { listOf("--build-arg", "${it.key}=${it.value}") })
         command.addAll(images.get().flatMap { listOf("--tag", it) })
