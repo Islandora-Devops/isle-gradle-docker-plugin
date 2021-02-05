@@ -41,7 +41,7 @@ val preprocessRunInstruction: (Instruction) -> Instruction = if (useBuildKit.toB
     }
 }
 
-data class BindMount(val from: String, val source: String, val target: String) {
+data class BindMount(val from: String?, val source: String?, val target: String) {
     companion object {
         private val EXTRACT_BIND_MOUNT_REGEX = """--mount=type=bind,([^\\]+)""".toRegex()
 
@@ -50,12 +50,17 @@ data class BindMount(val from: String, val source: String, val target: String) {
                 val parts = property.split('=')
                 Pair(parts[0], parts[1])
             }.toMap()
-            BindMount(properties["from"]!!, properties["source"]!!, properties["target"]!!)
+            BindMount(properties["from"], properties["source"], properties["target"]!!)
         }
     }
 
+    // eg. COPY /packages
+    // eg. COPY /home/builder/packages/x86_64 /packages
     // eg. COPY --from=imagemagick /home/builder/packages/x86_64 /packages
-    fun toCopyInstruction() = GenericInstruction("COPY --from=${from} $source $target")
+    fun toCopyInstruction() : GenericInstruction {
+        val from = if (from != null) "--from=${from}" else ""
+        return GenericInstruction("COPY $from $source $target")
+    }
 }
 
 //--mount=type=bind,from=imagemagick,source=/home/builder/packages/x86_64,target=/packages
@@ -111,7 +116,7 @@ subprojects {
             while (iterator.hasNext()) {
                 val (keyword, instructions) = iterator.next()
                 when (keyword) {
-                    RunCommandInstruction.KEYWORD -> {
+                    RunCommandInstruction.KEYWORD -> if (!useBuildKit.toBoolean()) { // Convert bind mounts to copies when BuildKit is not enabled.
                         // Get any bind mount flags and convert them into copy instructions.
                         val bindMounts = instructions.mapNotNull { instruction ->
                             BindMount.fromInstruction(instruction)
