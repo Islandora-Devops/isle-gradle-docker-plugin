@@ -1,4 +1,3 @@
-import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 import com.bmuschko.gradle.docker.tasks.image.DockerPushImage
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile.*
@@ -153,44 +152,23 @@ subprojects {
             destFile.set(buildDir.resolve("Dockerfile"))
         }
 
-        val buildDockerImage = if (useBuildKit.toBoolean()) {
-            tasks.register<DockerBuildKitBuildImage>("build") {
-                group = "islandora"
-                description = "Creates Docker image."
-                dockerFile.set(createDockerfile.map { it.destFile.get() })
-                images.addAll(imageTags)
-                inputDir.set(projectDir)
-                // Use the remote cache to build this image if possible.
-                cacheFrom.addAll(cachedImageTags)
-                // Allow image to be used as a cache when building on other machine.
-                buildArgs.put("BUILDKIT_INLINE_CACHE", "1")
-                // Check that so other process has not removed the image since it was last built.
-                outputs.upToDateWhen { task ->
-                    imageExists(project, (task as DockerBuildKitBuildImage).imageIdFile)
-                }
-            }
-        } else {
-            tasks.register<DockerBuildImage>("build") {
-                group = "islandora"
-                description = "Creates Docker image."
-                dockerFile.set(createDockerfile.map { it.destFile.get() })
-                images.addAll(imageTags)
-                inputDir.set(projectDir)
-                // Check that so other process has not removed the image since it was last built.
-                outputs.upToDateWhen { task ->
-                    imageExists(project, (task as DockerBuildImage).imageIdFile)
-                }
+        val buildDockerImage = tasks.register<DockerBuildKitBuildImage>("build") {
+            group = "islandora"
+            description = "Creates Docker image."
+            dockerFile.set(createDockerfile.map { it.destFile.get() })
+            buildKit.set(useBuildKit.toBoolean())
+            images.addAll(imageTags)
+            inputDir.set(projectDir)
+            // Use the remote cache to build this image if possible.
+            cacheFrom.addAll(cachedImageTags)
+            // Check that another process has not removed the image since it was last built.
+            outputs.upToDateWhen { task ->
+                imageExists(project, (task as DockerBuildKitBuildImage).imageIdFile)
             }
         }
 
         tasks.register<DockerPushImage>("push") {
-            images.set(buildDockerImage.map {
-                when (it) {
-                    is DockerBuildKitBuildImage -> it.images.get()
-                    is DockerBuildImage -> it.images.get()
-                    else -> throw RuntimeException("Impossible to reach this state, but we must satisfy the type system.")
-                }
-            })
+            images.set(buildDockerImage.map { it.images.get() })
             registryCredentials {
                 url.set(registryUrl)
                 username.set(registryUsername)
@@ -216,12 +194,6 @@ inline fun <reified T : DefaultTask> getBuildDependencies(childTask: T) = childT
 // https://github.com/moby/moby/issues/39769
 // Now it uses whatever repository we're building / latest since that is variable.
 subprojects {
-    tasks.withType<DockerBuildImage> {
-        getBuildDependencies(this).forEach { parentTask ->
-            inputs.file(parentTask.imageIdFile.asFile) // If generated image id changes, rebuild.
-            dependsOn(parentTask)
-        }
-    }
     tasks.withType<DockerBuildKitBuildImage> {
         getBuildDependencies(this).forEach { parentTask ->
             inputs.file(parentTask.imageIdFile.asFile) // If generated image id changes, rebuild.
@@ -244,6 +216,9 @@ open class DockerBuildKitBuildImage : DefaultTask() {
     @InputDirectory
     @PathSensitive(PathSensitivity.RELATIVE)
     val inputDir = project.objects.directoryProperty()
+
+    @Input
+    val buildKit = project.objects.property<Boolean>()
 
     @Input
     @get:Optional
@@ -287,13 +262,21 @@ open class DockerBuildKitBuildImage : DefaultTask() {
     fun exec() {
         val command = mutableListOf("docker", "build", "--progress=plain")
         command.addAll(listOf("--file", dockerFile.get().asFile.absolutePath))
-        command.addAll(cacheFrom.get().filter { cacheFromValid(it) }.flatMap { listOf("--cache-from", it) })
+        if (buildKit.get()) {
+            // Only BuildKit allows us to use existing images as a cache.
+            command.addAll(cacheFrom.get().filter { cacheFromValid(it) }.flatMap { listOf("--cache-from", it) })
+            // Allow image to be used as a cache when building on other machine.
+            command.addAll(listOf("--build-arg", "BUILDKIT_INLINE_CACHE=1"))
+        }
         command.addAll(buildArgs.get().flatMap { listOf("--build-arg", "${it.key}=${it.value}") })
         command.addAll(images.get().flatMap { listOf("--tag", it) })
         command.addAll(listOf("--iidfile", imageIdFile.get().asFile.absolutePath))
         command.add(".")
         project.exec {
-            environment("DOCKER_BUILDKIT" to 1)
+            // Use BuildKit to build.
+            if (buildKit.get()) {
+                environment("DOCKER_BUILDKIT" to 1)
+            }
             workingDir = inputDir.get().asFile
             commandLine = command
         }
