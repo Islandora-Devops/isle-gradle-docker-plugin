@@ -24,18 +24,19 @@ val registryPassword = properties.getOrDefault("registryPassword", "") as String
 // FROM [--platform=<platform>] <image> [AS <name>]
 // FROM [--platform=<platform>] <image>[:<tag>] [AS <name>]
 // FROM [--platform=<platform>] <image>[@<digest>] [AS <name>]
-val extractProjectDependenciesFromDockerfileRegex = """FROM[ \t]+(:?--platform=[^ ]+[ \t]+)?local/([^ :@]+):(.*)""".toRegex()
+val extractProjectDependenciesFromDockerfileRegex =
+    """FROM[ \t]+(:?--platform=[^ ]+[ \t]+)?local/([^ :@]+):(.*)""".toRegex()
 
-// If Buildkit is enabled instructions are left as is otherwise Buildkit specific flags are removed.
-val extractBuildkitFlagFromInstruction = """(--mount.+ \\)""".toRegex()
+// If BuildKit is enabled instructions are left as is otherwise BuildKit specific flags are removed.
+val extractBuildKitFlagFromInstruction = """(--mount.+ \\)""".toRegex()
 val preprocessRunInstruction: (Instruction) -> Instruction = if (useBuildKit.toBoolean()) {
     // No-op
     { instruction -> instruction }
 } else {
-    // Strip Buildkit specific flags.
+    // Strip BuildKit specific flags.
     { instruction ->
         // Assumes only mount flags are used and each one is separated onto it's own line.
-        val text = instruction.text.replace(extractBuildkitFlagFromInstruction, """\\""")
+        val text = instruction.text.replace(extractBuildKitFlagFromInstruction, """\\""")
         GenericInstruction(text)
     }
 }
@@ -56,13 +57,12 @@ data class BindMount(val from: String?, val source: String?, val target: String)
     // eg. COPY /packages
     // eg. COPY /home/builder/packages/x86_64 /packages
     // eg. COPY --from=imagemagick /home/builder/packages/x86_64 /packages
-    fun toCopyInstruction() : GenericInstruction {
+    fun toCopyInstruction(): GenericInstruction {
         val from = if (from != null) "--from=${from}" else ""
         return GenericInstruction("COPY $from $source $target")
     }
 }
 
-//--mount=type=bind,from=imagemagick,source=/home/builder/packages/x86_64,target=/packages
 // Generate a list of image tags for the given image, using the project, and tag properties.
 fun imagesTags(image: String, project: Project): Set<String> {
     val tags = properties.getOrDefault("tags", "") as String
@@ -99,7 +99,7 @@ subprojects {
             // To simplify processing the instructions group them by keyword.
             val originalInstructions = instructions.get().toList()
             val groupedInstructions = mutableListOf<Pair<String, MutableList<Instruction>>>(
-                    Pair(originalInstructions.first().keyword, mutableListOf(originalInstructions.first()))
+                Pair(originalInstructions.first().keyword, mutableListOf(originalInstructions.first()))
             )
             originalInstructions.drop(1).forEach { instruction ->
                 // An empty keyword means the line of text belongs to the previous instruction keyword.
@@ -109,7 +109,7 @@ subprojects {
                     groupedInstructions.last().second.add(instruction)
                 }
             }
-            // Using bind mounts from other images needs to be mapped to COPY instructions, if not using Buildkit.
+            // Using bind mounts from other images needs to be mapped to COPY instructions, if not using BuildKit.
             // Add these COPY instructions prior to the RUN instructions that used the bind mount.
             val iterator = groupedInstructions.listIterator()
             while (iterator.hasNext()) {
@@ -124,7 +124,12 @@ subprojects {
                             // Add before RUN instruction, previous is safe here as there has to always be at least a
                             // single FROM instruction preceding it.
                             iterator.previous()
-                            iterator.add(Pair(CopyFileInstruction.KEYWORD, mutableListOf(bindMount.toCopyInstruction())))
+                            iterator.add(
+                                Pair(
+                                    CopyFileInstruction.KEYWORD,
+                                    mutableListOf(bindMount.toCopyInstruction())
+                                )
+                            )
                             iterator.next()
                         }
                     }
@@ -143,7 +148,7 @@ subprojects {
                             } ?: instruction
                         }
                     }
-                    // Strip Buildkit flags if applicable.
+                    // Strip BuildKit flags if applicable.
                     RunCommandInstruction.KEYWORD -> instructions.map { preprocessRunInstruction(it) }
                     else -> instructions
                 }
