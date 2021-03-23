@@ -1,5 +1,5 @@
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.*
 
 plugins {
     `kotlin-dsl`
@@ -14,6 +14,8 @@ repositories {
 
 dependencies {
     implementation("com.bmuschko:gradle-docker-plugin:6.7.0")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8")
 }
 
 java {
@@ -48,4 +50,8 @@ publishing {
             }
         }
     }
+}
+
+kotlinDslPluginOptions {
+    experimentalWarning.set(false)
 }
