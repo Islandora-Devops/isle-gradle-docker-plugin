@@ -486,9 +486,10 @@ subprojects {
                 }
                 tags.plus("cache").map { tag ->
                     val baseUrl = "http://$ipAddress/v2/${project.name}/manifests"
+                    val accept = if (tag == "cache") "application/vnd.oci.image.index.v1+json" else "application/vnd.docker.distribution.manifest.v2+json"
                     (URL("$baseUrl/$tag").openConnection() as HttpURLConnection).run {
                         requestMethod = "GET"
-                        setRequestProperty("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+                        setRequestProperty("Accept", accept)
                         headerFields["Docker-Content-Digest"]?.first()
                     }?.let { digest ->
                         logger.info("Deleting ${project.name}/$tag:$digest")
