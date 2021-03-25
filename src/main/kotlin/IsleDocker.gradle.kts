@@ -212,8 +212,10 @@ val createLocalRegistry by tasks.registering {
                 """
                 [worker.oci]
                   enabled = true
+                  gc = false
                 [worker.containerd]
                   enabled = false
+                  gc = false
                 [registry."$localRepository"]
                   http = true
                   insecure = true
@@ -321,70 +323,6 @@ tasks.register("updateHostsFile") {
     dependsOn(getIpAddressOfLocalRegistry)
 }
 
-// Allows building both x86_64 and arm64 using emulation supported in version 19.03 and up as well Docker Desktop.
-val createBuilder by tasks.registering(DockerBuilder::class) {
-    group = isleBuildkitGroup
-    description = "Creates and starts the builder ('docker-container' or 'kubernetes' only)"
-    onlyIf { !isDockerBuild }
-    // Make sure the builder can find our local repository.
-    options.run {
-        append.set(true)
-        driver.set(buildDriver)
-        name.set("isle-buildkit-${buildDriver}")
-        node.set("isle-buildkit-${buildDriver}-node")
-        when (buildDriver) {
-            "docker-container" -> {
-                driverOpts.set(createLocalRegistry.map { task ->
-                    val network: Property<String> by task.extra
-                    "network=${network.get()},image=moby/buildkit:v0.8.1"
-                })
-                config.set(createLocalRegistry.map { task ->
-                    val configFile: RegularFileProperty by task.extra
-                    configFile.get()
-                })
-            }
-        }
-        use.set(true)
-    }
-    // Make sure the build node has started as otherwise it will fail if we attempt to build to images concurrently.
-    // https://github.com/docker/buildx/issues/344
-    doLast {
-        exec {
-            commandLine = listOf("docker", "buildx", "build", "-")
-            standardInput = ByteArrayInputStream(
-                """
-                # syntax=docker/dockerfile:1.2.1
-                FROM scratch
-                """.trimIndent().toByteArray()
-            )
-        }
-    }
-    dependsOn(installBinFmt, createLocalRegistry)
-    mustRunAfter("destroyBuilder")
-}
-
-val destroyBuilder by tasks.registering {
-    group = isleBuildkitGroup
-    description = "Destroy the builder and its cache ('docker-container' or 'kubernetes' only)"
-    doLast {
-        val builders = ByteArrayOutputStream().use { output ->
-            exec {
-                commandLine = listOf("docker", "buildx", "ls")
-                standardOutput = output
-            }
-            """^(isle-buildkit-[^ ]+)""".toRegex(RegexOption.MULTILINE).findAll(output.toString()).map { match ->
-                match.groupValues[1]
-            }
-        }.filterNotNull()
-        builders.forEach { builder ->
-            exec {
-                commandLine = listOf("docker", "buildx", "rm", builder)
-                isIgnoreExitValue = true
-            }
-        }
-    }
-}
-
 val clean by tasks.registering {
     group = isleBuildkitGroup
     description = "Destroy absolutely everything"
@@ -394,7 +332,7 @@ val clean by tasks.registering {
             isIgnoreExitValue = true
         }
     }
-    dependsOn(destroyLocalRegistry, destroyBuilder)
+    dependsOn(destroyLocalRegistry)
 }
 
 // Often easier to just use the default builder.
@@ -405,15 +343,6 @@ val useDefaultBuilder by tasks.registering {
         project.exec {
             commandLine = listOf("docker", "buildx", "use", "default")
         }
-    }
-}
-
-val setupBuilder by tasks.registering {
-    group = isleBuildkitGroup
-    description = "Setup the builder according to project properties"
-    when (buildDriver) {
-        "docker" -> dependsOn(useDefaultBuilder)
-        else -> dependsOn(createBuilder)
     }
 }
 
@@ -445,6 +374,60 @@ subprojects {
             "repository" to localRepository,
             "tag" to tag
         )
+
+        // Allows building both x86_64 and arm64 using emulation supported in version 19.03 and up as well Docker Desktop.
+        val createBuilder by tasks.registering(DockerBuilder::class) {
+            group = isleBuildkitGroup
+            description = "Creates and starts the builder ('docker-container' or 'kubernetes' only)"
+            onlyIf { !isDockerBuild }
+            // Make sure the builder can find our local repository.
+            options.run {
+                append.set(true)
+                driver.set(buildDriver)
+                name.set("isle-buildkit-${buildDriver}-${project.name}")
+                node.set("isle-buildkit-${buildDriver}-${project.name}-node")
+                when (buildDriver) {
+                    "docker-container" -> {
+                        driverOpts.set(createLocalRegistry.map { task ->
+                            val network: Property<String> by task.extra
+                            "network=${network.get()},image=moby/buildkit:v0.8.2"
+                        })
+                        config.set(createLocalRegistry.map { task ->
+                            val configFile: RegularFileProperty by task.extra
+                            configFile.get()
+                        })
+                    }
+                }
+                use.set(false)
+            }
+            dependsOn(installBinFmt, createLocalRegistry)
+            mustRunAfter("destroyBuilder")
+        }
+
+        val destroyBuilder by tasks.registering {
+            group = isleBuildkitGroup
+            description = "Destroy the builder and its cache ('docker-container' or 'kubernetes' only)"
+            doLast {
+                exec {
+                    commandLine = listOf("docker", "buildx", "rm", createBuilder.get().options.name.get())
+                    isIgnoreExitValue = true
+                }
+            }
+        }
+
+        // Clean up builders as well.
+        clean.configure {
+            dependsOn(destroyBuilder)
+        }
+
+        val setupBuilder by tasks.registering {
+            group = isleBuildkitGroup
+            description = "Setup the builder according to project properties"
+            when (buildDriver) {
+                "docker" -> dependsOn(useDefaultBuilder)
+                else -> dependsOn(createBuilder)
+            }
+        }
 
         tasks.register<DockerBuild>("build") {
             group = isleBuildkitGroup
@@ -486,7 +469,10 @@ subprojects {
                 }
                 tags.plus("cache").map { tag ->
                     val baseUrl = "http://$ipAddress/v2/${project.name}/manifests"
-                    val accept = if (tag == "cache") "application/vnd.oci.image.index.v1+json" else "application/vnd.docker.distribution.manifest.v2+json"
+                    val accept = if (tag == "cache")
+                        "application/vnd.oci.image.index.v1+json"
+                    else
+                        "application/vnd.docker.distribution.manifest.v2+json"
                     (URL("$baseUrl/$tag").openConnection() as HttpURLConnection).run {
                         requestMethod = "GET"
                         setRequestProperty("Accept", accept)
@@ -518,6 +504,9 @@ subprojects {
         tasks.withType<DockerBuild> {
             // Default arguments required for building.
             options.run {
+                if (!isDockerBuild) {
+                    builder.set(createBuilder.map { it.options.name.get() })
+                }
                 tags.convention(defaultTags)
                 buildArgs.convention(defaultBuildArgs)
             }

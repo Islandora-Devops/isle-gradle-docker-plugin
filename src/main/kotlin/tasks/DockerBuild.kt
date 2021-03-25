@@ -77,7 +77,7 @@ open class DockerBuild : DefaultTask() {
         // Set metadata for an image
         @Input
         @Optional
-        @Option("")
+        @Option("--label")
         val labels = objects.mapProperty<String, String>()
 
         // Shorthand for --output=type=docker
