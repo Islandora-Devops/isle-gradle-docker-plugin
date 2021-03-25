@@ -23,6 +23,9 @@ extensions.findByName("buildScan")?.withGroovyBuilder {
     setProperty("termsOfServiceAgree", "yes")
 }
 
+// If set to true resources are freed as soon as they are no longer needed.
+val isCI by extra((properties.getOrDefault("isCI", "false") as String).toBoolean())
+
 // The repository to place the images into.
 val repository by extra(properties.getOrDefault("docker.repository", "local") as String)
 val isLocalRepository by extra(repository == "local")
@@ -514,6 +517,16 @@ subprojects {
             dependsOn(setupBuilder)
             // If destroying resources as well make sure build tasks run after after the destroy tasks.
             mustRunAfter(clean, destroyBuilder, destroyLocalRegistry)
+            // We are either building or pushing neither both in a CI environment.
+            // This is just to keep us within the ~12 GB of free space that Github Actions gives us.
+            doLast {
+                if (!isDockerBuild && isCI) {
+                    exec {
+                        commandLine = listOf("docker", "buildx", "rm", createBuilder.get().options.name.get())
+                        isIgnoreExitValue = true
+                    }
+                }
+            }
         }
     }
 }
