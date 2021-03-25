@@ -284,28 +284,24 @@ open class DockerBuild : DefaultTask() {
         }
     }
 
-    // "push and load may not be set together at the moment", so we must manually load after building.
-    private fun load() {
+    // "push and load may not be set together at the moment", so we must manually pull after building.
+    // Only applies to when driver is not set to `docker`.
+    private fun pull() {
         val isDockerBuild: Boolean by project.rootProject.extra
         val isLocalRepository: Boolean by project.rootProject.extra
-        val multiArch = options.platforms.get().size > 1
-        if (!isDockerBuild && multiArch) {
-            val exclude = listOfNotNull(
-                "--iidfile",
-                "--platform",
-                "--push",
-                "--cache-to"
-            )
-            val command = mutableListOf("docker", "buildx", "build")
-            command.addAll(options.toList(exclude))
-            command.add("--load")
-            if (isLocalRepository) {
-                command.addAll(project.imageTags("local").flatMap { listOf("--tag", it) })
-            }
-            command.add(context.dir.absolutePath)
+        if (!isDockerBuild) {
             project.exec {
                 workingDir = context.dir
-                commandLine = command
+                commandLine = listOf("docker", "pull") + options.tags.get()
+            }
+            // Additionally if pulling from local repository tag them as such.
+            if (isLocalRepository) {
+                project.imageTags("local").forEach {
+                    project.exec {
+                        workingDir = context.dir
+                        commandLine = listOf("docker", "tag", options.tags.get().first(), it)
+                    }
+                }
             }
         }
     }
@@ -334,7 +330,7 @@ open class DockerBuild : DefaultTask() {
     @TaskAction
     fun exec() {
         build()
-        load()
+        pull()
         updateDigest()
         updateImageFile()
     }

@@ -39,6 +39,17 @@ val buildDriver by extra(properties.getOrDefault("docker.driver", "docker") as S
 val isDockerBuild by extra(buildDriver == "docker")
 val isContainerBuild by extra(buildDriver == "docker-container")
 
+// Conditionally allows pushing when `docker.driver` is set to `docker`. If we
+// are building with "docker-container" or "kubernetes" we must push as we need
+// to be able to pull from from the registry when building downstream images.
+val pushToRemote by extra((properties.getOrDefault("docker.push", "false") as String).toBoolean().let { push ->
+    if (!isDockerBuild) 
+        true
+    else
+        push
+})
+
+
 // The mode to use when populating the registry cache.
 @Suppress("unused")
 val cacheToMode by extra(properties.getOrDefault("docker.cacheToMode",
@@ -436,9 +447,7 @@ subprojects {
             group = isleBuildkitGroup
             description = "Build docker image(s)"
             options.run {
-                // If we are building with "docker-container" or "kubernetes" we must push as we need to be able to pull
-                // from from the registry when building downstream images.
-                push.set(!isDockerBuild)
+                push.set(pushToRemote)
                 // Force the tags / build args to be relative to our local repository.
                 if (!isDockerBuild && isLocalRepository) {
                     tags.set(localRepositoryTags)
@@ -446,20 +455,6 @@ subprojects {
                 }
                 mustRunAfter("delete")
             }
-        }
-
-        tasks.register<DockerBuild>("push") {
-            group = isleBuildkitGroup
-            description = "Build and push docker image(s)"
-            options.run {
-                push.set(true)
-                // Force the tags / build args to be relative to our local repository.
-                if (isLocalRepository) {
-                    tags.set(localRepositoryTags)
-                    buildArgs.set(localRepositoryBuildArgs)
-                }
-            }
-            mustRunAfter("delete")
         }
 
         tasks.register("delete") {
