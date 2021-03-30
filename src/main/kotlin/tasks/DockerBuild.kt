@@ -12,6 +12,7 @@ import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.*
 import utils.DockerCommandOptions
 import utils.DockerCommandOptions.Option
+import utils.dockerPluginProject
 import utils.imageTags
 
 // Wrapper around a call to `docker buildx build`, please refer to the documentation for more information:
@@ -198,14 +199,15 @@ open class DockerBuild : DefaultTask() {
 
         options.run {
             // Get project properties used to set defaults.
-            val buildPlatforms: Set<String> by project.rootProject.extra
-            val cacheFromEnabled: Boolean by project.rootProject.extra
-            val cacheToEnabled: Boolean by project.rootProject.extra
-            val cacheFromRepositories: Set<String> by project.rootProject.extra
-            val cacheToRepositories: Set<String> by project.rootProject.extra
-            val cacheToMode: String by project.rootProject.extra
-            val noBuildCache: Boolean by project.rootProject.extra
-            val isDockerBuild: Boolean by project.rootProject.extra
+            val pluginProject = project.dockerPluginProject()
+            val buildPlatforms: Set<String> by pluginProject.extra
+            val cacheFromEnabled: Boolean by pluginProject.extra
+            val cacheToEnabled: Boolean by pluginProject.extra
+            val cacheFromRepositories: Set<String> by pluginProject.extra
+            val cacheToRepositories: Set<String> by pluginProject.extra
+            val cacheToMode: String by pluginProject.extra
+            val noBuildCache: Boolean by pluginProject.extra
+            val isDockerBuild: Boolean by pluginProject.extra
 
             // Assume docker file is in the project directory.
             dockerFile.convention(project.layout.projectDirectory.file("Dockerfile"))
@@ -258,7 +260,7 @@ open class DockerBuild : DefaultTask() {
 
     // Checks if all images denoted by the given tag(s) exists locally.
     private fun imagesExist(): Boolean {
-        val dockerClient: DockerClient by project.rootProject.extra
+        val dockerClient: DockerClient by project.dockerPluginProject().extra
         return options.tags.get().all { tag ->
             try {
                 dockerClient.inspectImageCmd(tag).exec()
@@ -287,8 +289,9 @@ open class DockerBuild : DefaultTask() {
     // "push and load may not be set together at the moment", so we must manually pull after building.
     // Only applies to when driver is not set to `docker`.
     private fun pull() {
-        val isDockerBuild: Boolean by project.rootProject.extra
-        val isLocalRepository: Boolean by project.rootProject.extra
+        val pluginProject = project.dockerPluginProject()
+        val isDockerBuild: Boolean by pluginProject.extra
+        val isLocalRepository: Boolean by pluginProject.extra
         if (!isDockerBuild) {
             project.exec {
                 workingDir = context.dir
@@ -309,8 +312,9 @@ open class DockerBuild : DefaultTask() {
     // Due to https://github.com/docker/buildx/issues/420 we cannot rely on the imageId file to be populated
     // correctly so we take matters into our own hands.
     private fun updateImageFile() {
-        val isDockerBuild: Boolean by project.rootProject.extra
-        val dockerClient: DockerClient by project.rootProject.extra
+        val pluginProject = project.dockerPluginProject()
+        val isDockerBuild: Boolean by pluginProject.extra
+        val dockerClient: DockerClient by pluginProject.extra
         if (!isDockerBuild) {
             dockerClient.inspectImageCmd(options.tags.get().first()).exec().run {
                 options.imageIdFile.get().asFile.writeText(id)
@@ -321,7 +325,8 @@ open class DockerBuild : DefaultTask() {
     // We generate an approximate digest to prevent rebuilding downstream images as this will be used as an input to
     // those images.
     private fun updateDigest() {
-        val dockerClient: DockerClient by project.rootProject.extra
+        val pluginProject = project.dockerPluginProject()
+        val dockerClient: DockerClient by pluginProject.extra
         dockerClient.inspectImageCmd(options.tags.get().first()).exec().run {
             digest.get().asFile.writeText(jacksonObjectMapper().writeValueAsString(ApproximateDigest(config, rootFS)))
         }
