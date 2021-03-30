@@ -178,7 +178,7 @@ val createLocalRegistry by tasks.registering {
     network.convention("isle-buildkit")
 
     val configFile by extra(objects.fileProperty())
-    configFile.convention(project.layout.buildDirectory.file("config.toml"))
+    configFile.convention(project.rootProject.layout.buildDirectory.file("config.toml"))
 
     doLast {
         // Create network (allows host DNS name resolution between builder and local registry).
