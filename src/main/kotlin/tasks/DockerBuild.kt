@@ -183,8 +183,8 @@ open class DockerBuild : DefaultTask() {
     @PathSensitive(PathSensitivity.RELATIVE)
     val sourceImageDigests = project.objects.listProperty<RegularFile>().convention(
         requiredImages.map { images ->
-            images.map { image ->
-                dockerBuildTasks(name)[image]!!.get().digest.get()
+            images.mapNotNull { image ->
+                dockerBuildTasks(name)[image]?.get()?.digest?.get()
             }
         }
     )
@@ -249,6 +249,15 @@ open class DockerBuild : DefaultTask() {
 
         // Check that another process has not removed the image since it was last built.
         outputs.upToDateWhen { task -> (task as DockerBuild).imagesExist() }
+
+        // Enforce build ordering.
+        dependsOn(
+            requiredImages.map { images ->
+                images.mapNotNull { image ->
+                    dockerBuildTasks(name)[image]
+                }
+            }
+        )
     }
 
     // Get list of all DockerBuild tasks with the given name.
