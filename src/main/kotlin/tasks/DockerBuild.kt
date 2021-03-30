@@ -6,6 +6,7 @@ import com.github.dockerjava.api.command.RootFS
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.ContainerConfig
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.tasks.*
@@ -180,10 +181,10 @@ open class DockerBuild : DefaultTask() {
     // when the upstream images have not changed.
     @InputFiles
     @PathSensitive(PathSensitivity.RELATIVE)
-    val sourceImageDigests = project.objects.listProperty<RegularFileProperty>().convention(
+    val sourceImageDigests = project.objects.listProperty<RegularFile>().convention(
         requiredImages.map { images ->
             images.map { image ->
-                dockerBuildTasks(name)[image]!!.get().digest
+                dockerBuildTasks(name)[image]!!.get().digest.get()
             }
         }
     )
