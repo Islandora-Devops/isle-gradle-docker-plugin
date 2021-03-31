@@ -303,9 +303,11 @@ open class DockerBuild : DefaultTask() {
         val isDockerBuild: Boolean by pluginProject.extra
         val isLocalRepository: Boolean by pluginProject.extra
         if (!isDockerBuild) {
-            project.exec {
-                workingDir = context.dir
-                commandLine = listOf("docker", "pull") + options.tags.get()
+            options.tags.get().forEach { tag ->
+                project.exec {
+                    workingDir = context.dir
+                    commandLine = listOf("docker", "pull", tag)
+                }
             }
             // Additionally if pulling from local repository tag them as such.
             if (isLocalRepository) {
