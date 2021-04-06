@@ -6,12 +6,14 @@ import com.github.dockerjava.api.command.RootFS
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.ContainerConfig
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.*
 import utils.DockerCommandOptions
 import utils.DockerCommandOptions.Option
+import utils.dockerPluginProject
 import utils.imageTags
 
 // Wrapper around a call to `docker buildx build`, please refer to the documentation for more information:
@@ -77,7 +79,7 @@ open class DockerBuild : DefaultTask() {
         // Set metadata for an image
         @Input
         @Optional
-        @Option("")
+        @Option("--label")
         val labels = objects.mapProperty<String, String>()
 
         // Shorthand for --output=type=docker
@@ -179,10 +181,10 @@ open class DockerBuild : DefaultTask() {
     // when the upstream images have not changed.
     @InputFiles
     @PathSensitive(PathSensitivity.RELATIVE)
-    val sourceImageDigests = project.objects.listProperty<RegularFileProperty>().convention(
+    val sourceImageDigests = project.objects.listProperty<RegularFile>().convention(
         requiredImages.map { images ->
-            images.map { image ->
-                dockerBuildTasks(name)[image]!!.get().digest
+            images.mapNotNull { image ->
+                dockerBuildTasks(name)[image]?.get()?.digest?.get()
             }
         }
     )
@@ -198,14 +200,15 @@ open class DockerBuild : DefaultTask() {
 
         options.run {
             // Get project properties used to set defaults.
-            val buildPlatforms: Set<String> by project.rootProject.extra
-            val cacheFromEnabled: Boolean by project.rootProject.extra
-            val cacheToEnabled: Boolean by project.rootProject.extra
-            val cacheFromRepositories: Set<String> by project.rootProject.extra
-            val cacheToRepositories: Set<String> by project.rootProject.extra
-            val cacheToMode: String by project.rootProject.extra
-            val noBuildCache: Boolean by project.rootProject.extra
-            val isDockerBuild: Boolean by project.rootProject.extra
+            val pluginProject = project.dockerPluginProject()
+            val buildPlatforms: Set<String> by pluginProject.extra
+            val cacheFromEnabled: Boolean by pluginProject.extra
+            val cacheToEnabled: Boolean by pluginProject.extra
+            val cacheFromRepositories: Set<String> by pluginProject.extra
+            val cacheToRepositories: Set<String> by pluginProject.extra
+            val cacheToMode: String by pluginProject.extra
+            val noBuildCache: Boolean by pluginProject.extra
+            val isDockerBuild: Boolean by pluginProject.extra
 
             // Assume docker file is in the project directory.
             dockerFile.convention(project.layout.projectDirectory.file("Dockerfile"))
@@ -246,6 +249,15 @@ open class DockerBuild : DefaultTask() {
 
         // Check that another process has not removed the image since it was last built.
         outputs.upToDateWhen { task -> (task as DockerBuild).imagesExist() }
+
+        // Enforce build ordering.
+        dependsOn(
+            requiredImages.map { images ->
+                images.mapNotNull { image ->
+                    dockerBuildTasks(name)[image]
+                }
+            }
+        )
     }
 
     // Get list of all DockerBuild tasks with the given name.
@@ -258,7 +270,7 @@ open class DockerBuild : DefaultTask() {
 
     // Checks if all images denoted by the given tag(s) exists locally.
     private fun imagesExist(): Boolean {
-        val dockerClient: DockerClient by project.rootProject.extra
+        val dockerClient: DockerClient by project.dockerPluginProject().extra
         return options.tags.get().all { tag ->
             try {
                 dockerClient.inspectImageCmd(tag).exec()
@@ -284,28 +296,27 @@ open class DockerBuild : DefaultTask() {
         }
     }
 
-    // "push and load may not be set together at the moment", so we must manually load after building.
-    private fun load() {
-        val isDockerBuild: Boolean by project.rootProject.extra
-        val isLocalRepository: Boolean by project.rootProject.extra
-        val multiArch = options.platforms.get().size > 1
-        if (!isDockerBuild && multiArch) {
-            val exclude = listOfNotNull(
-                "--iidfile",
-                "--platform",
-                "--push",
-                "--cache-to"
-            )
-            val command = mutableListOf("docker", "buildx", "build")
-            command.addAll(options.toList(exclude))
-            command.add("--load")
-            if (isLocalRepository) {
-                command.addAll(project.imageTags("local").flatMap { listOf("--tag", it) })
+    // "push and load may not be set together at the moment", so we must manually pull after building.
+    // Only applies to when driver is not set to `docker`.
+    private fun pull() {
+        val pluginProject = project.dockerPluginProject()
+        val isDockerBuild: Boolean by pluginProject.extra
+        val isLocalRepository: Boolean by pluginProject.extra
+        if (!isDockerBuild) {
+            options.tags.get().forEach { tag ->
+                project.exec {
+                    workingDir = context.dir
+                    commandLine = listOf("docker", "pull", tag)
+                }
             }
-            command.add(context.dir.absolutePath)
-            project.exec {
-                workingDir = context.dir
-                commandLine = command
+            // Additionally if pulling from local repository tag them as such.
+            if (isLocalRepository) {
+                project.imageTags("local").forEach {
+                    project.exec {
+                        workingDir = context.dir
+                        commandLine = listOf("docker", "tag", options.tags.get().first(), it)
+                    }
+                }
             }
         }
     }
@@ -313,8 +324,9 @@ open class DockerBuild : DefaultTask() {
     // Due to https://github.com/docker/buildx/issues/420 we cannot rely on the imageId file to be populated
     // correctly so we take matters into our own hands.
     private fun updateImageFile() {
-        val isDockerBuild: Boolean by project.rootProject.extra
-        val dockerClient: DockerClient by project.rootProject.extra
+        val pluginProject = project.dockerPluginProject()
+        val isDockerBuild: Boolean by pluginProject.extra
+        val dockerClient: DockerClient by pluginProject.extra
         if (!isDockerBuild) {
             dockerClient.inspectImageCmd(options.tags.get().first()).exec().run {
                 options.imageIdFile.get().asFile.writeText(id)
@@ -325,7 +337,8 @@ open class DockerBuild : DefaultTask() {
     // We generate an approximate digest to prevent rebuilding downstream images as this will be used as an input to
     // those images.
     private fun updateDigest() {
-        val dockerClient: DockerClient by project.rootProject.extra
+        val pluginProject = project.dockerPluginProject()
+        val dockerClient: DockerClient by pluginProject.extra
         dockerClient.inspectImageCmd(options.tags.get().first()).exec().run {
             digest.get().asFile.writeText(jacksonObjectMapper().writeValueAsString(ApproximateDigest(config, rootFS)))
         }
@@ -334,7 +347,7 @@ open class DockerBuild : DefaultTask() {
     @TaskAction
     fun exec() {
         build()
-        load()
+        pull()
         updateDigest()
         updateImageFile()
     }

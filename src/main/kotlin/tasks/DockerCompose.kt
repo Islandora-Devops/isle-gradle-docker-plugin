@@ -12,6 +12,7 @@ import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.listProperty
 import org.gradle.kotlin.dsl.mapProperty
 import org.gradle.kotlin.dsl.provideDelegate
+import utils.isDockerProject
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.OutputStream
@@ -151,7 +152,7 @@ abstract class DockerCompose : DockerClient() {
     fun pull() = dockerCompose.services.keys.mapNotNull { name ->
         // Find services that do not match any projects and pull them as they must refer to an external image.
         // Other images will be provided by dependency on the image digests.
-        if (project.rootProject.findProject(":$name") == null) name else null
+        if (project.rootProject.allprojects.none { it.isDockerProject && it.name == name }) name else null
     }.let { services ->
         if (services.isNotEmpty()) {
             invoke("pull", *services.toTypedArray())
