@@ -2,7 +2,7 @@
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.core.DefaultDockerClientConfig
-import com.github.dockerjava.core.DockerClientBuilder
+import com.github.dockerjava.core.DockerClientImpl
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import tasks.DockerBuild
@@ -128,15 +128,12 @@ val tags by extra(
 // Communicate with docker using Java client API.
 @Suppress("unused")
 val dockerClient: DockerClient by extra {
-    val configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder().build()
+    val config = DefaultDockerClientConfig.createDefaultConfigBuilder().build()
     val httpClient = ApacheDockerHttpClient.Builder()
-        .dockerHost(configBuilder.dockerHost)
-        .sslConfig(configBuilder.sslConfig)
+        .dockerHost(config.dockerHost)
+        .sslConfig(config.sslConfig)
         .build()
-    val dockerClient = DockerClientBuilder
-        .getInstance()
-        .withDockerHttpClient(httpClient)
-        .build()
+    val dockerClient = DockerClientImpl.getInstance(config, httpClient)
     project.gradle.buildFinished {
         dockerClient.close()
     }

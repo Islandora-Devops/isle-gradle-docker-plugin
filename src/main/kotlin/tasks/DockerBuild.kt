@@ -7,7 +7,6 @@ import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.ContainerConfig
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFile
-import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.*
