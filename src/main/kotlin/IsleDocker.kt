@@ -47,6 +47,10 @@ class IsleDocker : Plugin<Project> {
         val isDockerBuild by extra(buildDriver == "docker")
         val isContainerBuild by extra(buildDriver == "docker-container")
 
+        if (!isDockerBuild && !os.isLinux) {
+            error("Only 'docker.driver=docker' is supported on non-linux systems.")
+        }
+
         // Conditionally allows pushing when `docker.driver` is set to `docker`. If we
         // are building with "docker-container" or "kubernetes" we must push as we need
         // to be able to pull from from the registry when building downstream images.
@@ -315,7 +319,7 @@ class IsleDocker : Plugin<Project> {
         tasks.register("updateHostsFile") {
             group = isleBuildkitGroup
             description = "Modifies /etc/hosts to include reference to local repository on the host"
-            onlyIf { os.isLinux || os.isMacOsX }
+            onlyIf { os.isLinux }
             doLast {
                 val ipAddress = getIpAddressOfLocalRegistry.get().let { task ->
                     val ipAddress: Property<String> by task.extra
@@ -362,6 +366,9 @@ class IsleDocker : Plugin<Project> {
             doLast {
                 project.exec {
                     commandLine = listOf("docker", "context", "use", "default")
+                }
+                project.exec {
+                    commandLine = listOf("docker", "buildx", "use", "default")
                 }
             }
         }
@@ -509,6 +516,13 @@ class IsleDocker : Plugin<Project> {
                     // Default arguments required for building.
                     options.run {
                         if (!isDockerBuild) {
+                            dependsOn(getIpAddressOfLocalRegistry)
+                            // Make sure the local repository is accessible.
+                            addHosts.set(getIpAddressOfLocalRegistry.map {
+                                val ipAddress: Property<String> by it.extra
+                                listOf("${localRepository}:${ipAddress.get()}")
+                            })
+                            // Use the choosen builder.
                             builder.set(createBuilder.map { it.options.name.get() })
                         }
                         tags.convention(defaultTags)
