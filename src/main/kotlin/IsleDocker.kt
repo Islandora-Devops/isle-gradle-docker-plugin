@@ -361,7 +361,7 @@ class IsleDocker : Plugin<Project> {
             description = "Change the builder to use the Docker Daemon"
             doLast {
                 project.exec {
-                    commandLine = listOf("docker", "buildx", "use", "default")
+                    commandLine = listOf("docker", "context", "use", "default")
                 }
             }
         }
