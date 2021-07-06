@@ -17,7 +17,6 @@ import utils.imageTags
 
 // Wrapper around a call to `docker buildx build`, please refer to the documentation for more information:
 // https://github.com/docker/buildx#documentation
-@CacheableTask
 open class DockerBuild : DefaultTask() {
 
     // Not actually the image digest but rather an approximation that ignores timestamps, etc.

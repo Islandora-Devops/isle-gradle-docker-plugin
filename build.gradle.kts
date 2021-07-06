@@ -7,6 +7,7 @@ plugins {
     `kotlin-dsl`
     // Apply the Kotlin JVM plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.4.31"
+    `maven-publish`
 }
 
 repositories {
@@ -41,13 +42,31 @@ gradlePlugin {
 // The configuration example below shows the minimum required properties
 // configured to publish your plugin to the plugin portal
 pluginBundle {
-    website = "https://islandora.ca/"
+    website = "https://islandora.ca"
     vcsUrl = "https://github.com/Islandora-Devops/isle-gradle-docker-plugin"
     description = "Gradle plugin that supports building interdependent Docker images with Buildkit support for the Isle project."
     tags = listOf("isle", "islandora", "docker")
     (plugins) {
         "IsleDocker" {
             displayName = "Docker build plugin for the Islandora Isle project"
+        }
+    }
+    mavenCoordinates {
+        groupId = "ca.islandora"
+        artifactId = "isle-docker-plugins"
+        version = "0.6"
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/${System.getenv("GITHUB_REPOSITORY")}")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
     }
 }
