@@ -17,7 +17,6 @@ import utils.imageTags
 
 // Wrapper around a call to `docker buildx build`, please refer to the documentation for more information:
 // https://github.com/docker/buildx#documentation
-@Suppress("UnstableApiUsage")
 @CacheableTask
 open class DockerBuild : DefaultTask() {
 
@@ -25,6 +24,7 @@ open class DockerBuild : DefaultTask() {
     // So we do not build/test unless the image has actually changed, it only checks contents & configuration.
     data class ApproximateDigest(val config: ContainerConfig, val rootFS: RootFS)
 
+    @Suppress("unused")
     class Options constructor(objects: ObjectFactory) : DockerCommandOptions {
         // Add a custom host-to-IP mapping (host:ip)
         @Input
@@ -180,6 +180,7 @@ open class DockerBuild : DefaultTask() {
     // when the upstream images have not changed.
     @InputFiles
     @PathSensitive(PathSensitivity.RELATIVE)
+    @Suppress("unused")
     val sourceImageDigests = project.objects.listProperty<RegularFile>().convention(
         requiredImages.map { images ->
             images.mapNotNull { image ->
@@ -250,7 +251,7 @@ open class DockerBuild : DefaultTask() {
         outputs.upToDateWhen { task -> (task as DockerBuild).imagesExist() }
 
         // Enforce build ordering.
-        dependsOn(
+        this.dependsOn(
             requiredImages.map { images ->
                 images.mapNotNull { image ->
                     dockerBuildTasks(name)[image]
@@ -261,11 +262,9 @@ open class DockerBuild : DefaultTask() {
 
     // Get list of all DockerBuild tasks with the given name.
     private fun dockerBuildTasks(name: String) = project.rootProject.allprojects
-        .filter { it.projectDir.resolve("Dockerfile").exists() }
-        .map { project ->
+        .filter { it.projectDir.resolve("Dockerfile").exists() }.associate { project ->
             project.name to project.tasks.named<DockerBuild>(name)
         }
-        .toMap()
 
     // Checks if all images denoted by the given tag(s) exists locally.
     private fun imagesExist(): Boolean {

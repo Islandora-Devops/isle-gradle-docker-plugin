@@ -9,9 +9,9 @@ import utils.DockerCommandOptions.Option
 
 // Wrapper around a call to `docker buildx create`, please refer to the documentation for more information:
 // https://github.com/docker/buildx#documentation
-@Suppress("UnstableApiUsage")
 open class DockerBuilder : DefaultTask() {
 
+    @Suppress("unused")
     class Options constructor(objects: ObjectFactory) : DockerCommandOptions {
         // Append a node to builder instead of changing it
         @Input

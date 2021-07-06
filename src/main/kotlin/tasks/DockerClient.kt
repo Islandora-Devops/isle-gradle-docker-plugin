@@ -7,7 +7,8 @@ import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import org.gradle.api.DefaultTask
 import org.gradle.api.UnknownTaskException
 import org.gradle.api.tasks.Internal
-import org.gradle.kotlin.dsl.*
+import org.gradle.kotlin.dsl.named
+import org.gradle.kotlin.dsl.provideDelegate
 
 abstract class DockerClient : DefaultTask() {
 
