@@ -1,5 +1,5 @@
-version = "0.5"
-group = "ca.islandora"
+version = "0.6"
+group = "org.github.nigelgbanks"
 
 plugins {
     id("com.gradle.plugin-publish") version "0.15.0"
@@ -33,7 +33,7 @@ java {
 gradlePlugin {
     plugins {
         create("IsleDocker") {
-            id = "IsleDocker"
+            id = "org.github.nigelgbanks.IsleDocker"
             implementationClass = "IsleDocker"
         }
     }
@@ -42,7 +42,7 @@ gradlePlugin {
 // The configuration example below shows the minimum required properties
 // configured to publish your plugin to the plugin portal
 pluginBundle {
-    website = "https://islandora.ca"
+    website = "https://github.com/Islandora-Devops/isle-gradle-docker-plugin"
     vcsUrl = "https://github.com/Islandora-Devops/isle-gradle-docker-plugin"
     description = "Gradle plugin that supports building interdependent Docker images with Buildkit support for the Isle project."
     tags = listOf("isle", "islandora", "docker")
@@ -52,7 +52,7 @@ pluginBundle {
         }
     }
     mavenCoordinates {
-        groupId = "ca.islandora"
+        groupId = "org.github.nigelgbanks"
         artifactId = "isle-docker-plugins"
         version = "0.6"
     }
