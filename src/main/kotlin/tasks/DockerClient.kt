@@ -2,26 +2,24 @@ package tasks
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.core.DefaultDockerClientConfig
-import com.github.dockerjava.core.DockerClientBuilder
+import com.github.dockerjava.core.DockerClientImpl
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import org.gradle.api.DefaultTask
 import org.gradle.api.UnknownTaskException
 import org.gradle.api.tasks.Internal
-import org.gradle.kotlin.dsl.*
+import org.gradle.kotlin.dsl.named
+import org.gradle.kotlin.dsl.provideDelegate
 
 abstract class DockerClient : DefaultTask() {
 
     @get:Internal
     val dockerClient: DockerClient by lazy {
-        val configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder().build()
+        val config = DefaultDockerClientConfig.createDefaultConfigBuilder().build()
         val httpClient = ApacheDockerHttpClient.Builder()
-            .dockerHost(configBuilder.dockerHost)
-            .sslConfig(configBuilder.sslConfig)
+            .dockerHost(config.dockerHost)
+            .sslConfig(config.sslConfig)
             .build()
-        val dockerClient = DockerClientBuilder
-            .getInstance()
-            .withDockerHttpClient(httpClient)
-            .build()
+        val dockerClient = DockerClientImpl.getInstance(config, httpClient)
         project.gradle.buildFinished {
             dockerClient.close()
         }

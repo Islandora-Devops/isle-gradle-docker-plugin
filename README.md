@@ -123,13 +123,23 @@ Alternatively you can rely on the Github actions which will publish when a relea
 
 ## Using the Plugin
 
+To include this plugin for versions 0.7+ add the following to your `build.gradle.kts` file:
+
+```kotlin
+plugins {
+  id("com.github.nigelgbanks.IsleDocker") version "0.7"
+}
+```
+
+## Using the Plugin from Source
+
 To include this plugin in another project use the following snippet of Kotlin script in your Gradle project with
 the `settings.gradle.kts` file that allows the plugin source to be discoverable:
 
 ```kotlin
 sourceControl {
-    gitRepository(uri("https://github.com/Islandora-Devops/isle-gradle-docker-plugin.git")) {
-        producesModule("ca.islandora:isle-gradle-docker-plugin")
+    gitRepository(uri("file:///PATH_TO_FOLDER/isle-gradle-docker-plugin/.git")) {
+        producesModule("com.github.nigelgbanks:isle-gradle-docker-plugin")
     }
 }
 ```
@@ -142,10 +152,16 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("ca.islandora:isle-gradle-docker-plugin:0.0.1")
+        classpath("com.github.nigelgbanks:isle-gradle-docker-plugin") {
+          version {
+            branch = "BRANCH_NAME"
+          }
+        }
     }
 }
-apply(plugin = "ca.islandora.gradle.docker")
+apply(plugin = "com.github.nigelgbanks.IsleDocker")
 ```
+
+Note that it will only use **committed** changes.
 
 [Buildkit]: https://github.com/moby/buildkit/blob/main/frontend/dockerfile/docs/experimental.md

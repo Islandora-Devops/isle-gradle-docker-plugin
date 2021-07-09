@@ -34,6 +34,7 @@ abstract class DockerCompose : DockerClient() {
 
     data class Service(val image: String) {
         companion object {
+            @Suppress("RegExpRedundantEscape")
             val regex = """\$\{(?<variable>[^:]+):-(?<default>.+)\}""".toRegex()
         }
 
@@ -143,6 +144,7 @@ abstract class DockerCompose : DockerClient() {
         throw e
     }
 
+    @Suppress("unused")
     fun exec(vararg args: String) = invoke("exec", *args)
 
     fun stop(vararg args: String) = invoke("stop", *args)
@@ -182,7 +184,7 @@ abstract class DockerCompose : DockerClient() {
 
     fun tearDown() {
         stop()
-        info.set(inspect().map { it.config.labels["com.docker.compose.service"]!! to it }.toMap())
+        info.set(inspect().associateBy { it.config.labels["com.docker.compose.service"]!! })
         log()
         down("-v")
     }

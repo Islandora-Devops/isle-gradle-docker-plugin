@@ -14,8 +14,8 @@ fun Project.dockerPluginProject() = generateSequence(this) { it.parent }
 
 // Computes a set of image tags for the given repository.
 fun Project.imageTags(repository: String): Set<String> {
-    val tags: Set<String> by dockerPluginProject().extra
-    return tags.map { "$repository/$name:$it" }.toSet()
+    val dockerTags: Set<String> by dockerPluginProject().extra
+    return dockerTags.map { "$repository/$name:$it" }.toSet()
 }
 
 // Check if the project should have docker related tasks.
