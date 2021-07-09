@@ -20,7 +20,7 @@ import java.net.URL
 
 @Suppress("unused")
 class IsleDocker : Plugin<Project> {
-    override fun apply(project: Project): Unit = project.run {
+    override fun apply(pluginProject: Project): Unit = pluginProject.run {
 
         val os = DefaultNativePlatform.getCurrentOperatingSystem()!!
         val arch = DefaultNativePlatform.getCurrentArchitecture()!!
@@ -508,7 +508,7 @@ class IsleDocker : Plugin<Project> {
                 tasks.register("test") {
                     group = isleBuildkitGroup
                     description = "Test docker image(s)"
-                    dependsOn(this.project.subprojects.mapNotNull { it.tasks.matching { task -> task.name == "test" } })
+                    dependsOn(project.subprojects.mapNotNull { it.tasks.matching { task -> task.name == "test" } })
                 }
 
                 // All build tasks have a number of shared defaults that can be overridden.

@@ -1,4 +1,4 @@
-version = "0.6"
+version = "0.7"
 group = "com.github.nigelgbanks"
 
 plugins {
@@ -54,7 +54,7 @@ pluginBundle {
     mavenCoordinates {
         groupId = "com.github.nigelgbanks"
         artifactId = "isle-docker-plugins"
-        version = "0.6"
+        version = "0.7"
     }
 }
 
