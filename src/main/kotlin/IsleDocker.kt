@@ -508,7 +508,7 @@ class IsleDocker : Plugin<Project> {
                 tasks.register("test") {
                     group = isleBuildkitGroup
                     description = "Test docker image(s)"
-                    dependsOn(project.subprojects.mapNotNull { it.tasks.matching { task -> task.name == "test" } })
+                    dependsOn(this.project.subprojects.mapNotNull { it.tasks.matching { task -> task.name == "test" } })
                 }
 
                 // All build tasks have a number of shared defaults that can be overridden.
@@ -522,7 +522,7 @@ class IsleDocker : Plugin<Project> {
                                 val ipAddress: Property<String> by it.extra
                                 listOf("${localRepository}:${ipAddress.get()}")
                             })
-                            // Use the choosen builder.
+                            // Use the chosen builder.
                             builder.set(createBuilder.map { it.options.name.get() })
                         }
                         tags.convention(defaultTags)
