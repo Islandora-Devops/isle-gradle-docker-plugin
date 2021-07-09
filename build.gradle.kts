@@ -1,5 +1,5 @@
 version = "0.6"
-group = "org.github.nigelgbanks"
+group = "com.github.nigelgbanks"
 
 plugins {
     id("com.gradle.plugin-publish") version "0.15.0"
@@ -33,7 +33,7 @@ java {
 gradlePlugin {
     plugins {
         create("IsleDocker") {
-            id = "org.github.nigelgbanks.IsleDocker"
+            id = "com.github.nigelgbanks.IsleDocker"
             implementationClass = "IsleDocker"
         }
     }
@@ -52,7 +52,7 @@ pluginBundle {
         }
     }
     mavenCoordinates {
-        groupId = "org.github.nigelgbanks"
+        groupId = "com.github.nigelgbanks"
         artifactId = "isle-docker-plugins"
         version = "0.6"
     }

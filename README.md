@@ -129,7 +129,7 @@ the `settings.gradle.kts` file that allows the plugin source to be discoverable:
 ```kotlin
 sourceControl {
     gitRepository(uri("https://github.com/Islandora-Devops/isle-gradle-docker-plugin.git")) {
-        producesModule("org.github.nigelgbanks:isle-gradle-docker-plugin")
+        producesModule("com.github.nigelgbanks:isle-gradle-docker-plugin")
     }
 }
 ```
@@ -142,10 +142,10 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("org.github.nigelgbanks:isle-gradle-docker-plugin:0.0.6")
+        classpath("com.github.nigelgbanks:isle-gradle-docker-plugin:0.0.6")
     }
 }
-apply(plugin = "org.github.nigelgbanks.IsleDocker")
+apply(plugin = "com.github.nigelgbanks.IsleDocker")
 ```
 
 [Buildkit]: https://github.com/moby/buildkit/blob/main/frontend/dockerfile/docs/experimental.md
