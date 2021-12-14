@@ -42,5 +42,4 @@ abstract class DockerClient : DefaultTask() {
         }
         return@lazy null
     }
-
 }

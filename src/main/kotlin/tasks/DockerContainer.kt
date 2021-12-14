@@ -30,7 +30,7 @@ abstract class DockerContainer : DockerClient() {
 
     // Capture the log output of the command for later inspection.
     @OutputFile
-    val log = project.objects.fileProperty().convention(project.layout.buildDirectory.file("${name}.log"))
+    val log = project.objects.fileProperty().convention(project.layout.buildDirectory.file("$name.log"))
 
     // Identifier of the container started to run this task.
     @Suppress("ANNOTATION_TARGETS_NON_EXISTENT_ACCESSOR")
@@ -162,7 +162,6 @@ abstract class DockerContainer : DockerClient() {
     fun setUp() {
         create()
         start()
-
     }
 
     fun setUp(action: CreateContainerCmd.() -> CreateContainerCmd) {

@@ -146,7 +146,6 @@ open class DockerBuild : DefaultTask() {
         @Optional
         @Option("--tag")
         val tags = objects.listProperty<String>()
-
     }
 
     @Nested
@@ -161,7 +160,7 @@ open class DockerBuild : DefaultTask() {
     // generate a hash as Gradle will do that when computing dependencies between tasks. This is only used to prevent
     // building / testing when the upstream images have not changed.
     @OutputFile
-    val digest = project.objects.fileProperty().convention(project.layout.buildDirectory.file("${name}-digest.json"))
+    val digest = project.objects.fileProperty().convention(project.layout.buildDirectory.file("$name-digest.json"))
 
     // Gets list of images names without repository or tag, required to build this image.
     // This assumes all images are building within this project.
@@ -212,7 +211,7 @@ open class DockerBuild : DefaultTask() {
             // Assume docker file is in the project directory.
             dockerFile.convention(project.layout.projectDirectory.file("Dockerfile"))
             // We always want to generate an imageIdFile if applicable i.e. when --load is specified.
-            imageIdFile.convention(project.layout.buildDirectory.file("${name}-imageId.txt"))
+            imageIdFile.convention(project.layout.buildDirectory.file("$name-imageId.txt"))
             // It is not possible to use --platform with "docker" builder.
             if (!isDockerBuild) {
                 platforms.convention(buildPlatforms)
@@ -234,7 +233,7 @@ open class DockerBuild : DefaultTask() {
                     cacheTo.convention(
                         cacheToRepositories.map { repository ->
                             when (cacheToMode) {
-                                "min", "max" -> "type=registry,mode=${cacheToMode},ref=$repository/${project.name}:cache"
+                                "min", "max" -> "type=registry,mode=$cacheToMode,ref=$repository/${project.name}:cache"
                                 "inline" -> "type=inline"
                                 else -> throw RuntimeException("Unknown cacheToMode $cacheToMode")
                             }

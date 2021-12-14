@@ -85,20 +85,22 @@ abstract class DockerCompose : DockerClient() {
     @InputFiles
     @Optional
     @PathSensitive(PathSensitivity.RELATIVE)
-    val digests = project.objects.listProperty<RegularFileProperty>().convention(project.provider {
-        // If the name of a service matches a known image in this build we will set a dependency on it.
-        dockerCompose.services.mapNotNull { (name, _) ->
-            project.findProject(":$name")
-                ?.tasks
-                ?.named("build", DockerBuild::class.java)
-                ?.get()
-                ?.digest
+    val digests = project.objects.listProperty<RegularFileProperty>().convention(
+        project.provider {
+            // If the name of a service matches a known image in this build we will set a dependency on it.
+            dockerCompose.services.mapNotNull { (name, _) ->
+                project.findProject(":$name")
+                    ?.tasks
+                    ?.named("build", DockerBuild::class.java)
+                    ?.get()
+                    ?.digest
+            }
         }
-    })
+    )
 
     // Capture the log output of the command for later inspection.
     @OutputFile
-    val log = project.objects.fileProperty().convention(project.layout.buildDirectory.file("${name}.log"))
+    val log = project.objects.fileProperty().convention(project.layout.buildDirectory.file("$name.log"))
 
     // Environment for docker-compose not the actual containers.
     @Input

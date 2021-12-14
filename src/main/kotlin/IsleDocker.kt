@@ -54,18 +54,24 @@ class IsleDocker : Plugin<Project> {
         // Conditionally allows pushing when `docker.driver` is set to `docker`. If we
         // are building with "docker-container" or "kubernetes" we must push as we need
         // to be able to pull from from the registry when building downstream images.
-        val pushToRemote by extra((properties.getOrDefault("docker.push", "false") as String).toBoolean()
-            .let { push ->
-                if (!isDockerBuild)
-                    true
-                else
-                    push
-            })
+        val pushToRemote by extra(
+            (properties.getOrDefault("docker.push", "false") as String).toBoolean()
+                .let { push ->
+                    if (!isDockerBuild)
+                        true
+                    else
+                        push
+                }
+        )
 
         // The mode to use when populating the registry cache.
         @Suppress("unused")
-        val cacheToMode by extra(properties.getOrDefault("docker.cacheToMode",
-            if (isDockerBuild) "inline" else "max") as String)
+        val cacheToMode by extra(
+            properties.getOrDefault(
+                "docker.cacheToMode",
+                if (isDockerBuild) "inline" else "max"
+            ) as String
+        )
 
         // Enable caching from/to repositories.
         @Suppress("unused")
@@ -244,7 +250,7 @@ class IsleDocker : Plugin<Project> {
                               http = true
                               insecure = true
             
-                            """.trimIndent()
+                        """.trimIndent()
                     )
                 }
             }
@@ -281,12 +287,14 @@ class IsleDocker : Plugin<Project> {
             description = "Deletes layers not referenced by any manifests in the local repository"
             doLast {
                 exec {
-                    commandLine = listOf("docker",
+                    commandLine = listOf(
+                        "docker",
                         "exec",
                         localRepository,
                         "bin/registry",
                         "garbage-collect",
-                        "/etc/docker/registry/config.yml")
+                        "/etc/docker/registry/config.yml"
+                    )
                 }
             }
             dependsOn(createLocalRegistry)
@@ -330,8 +338,8 @@ class IsleDocker : Plugin<Project> {
                     standardInput = ByteArrayInputStream(
                         """
                         sed -n \
-                            -e '/^.*${localRepository}/!p' \
-                            -e '${'$'}a${ipAddress}\t${localRepository}' \
+                            -e '/^.*$localRepository/!p' \
+                            -e '${'$'}a$ipAddress\t$localRepository' \
                             /etc/hosts > /tmp/hosts
                         cat /tmp/hosts > /etc/hosts
                         """.trimIndent().toByteArray()
@@ -411,18 +419,22 @@ class IsleDocker : Plugin<Project> {
                     options.run {
                         append.set(true)
                         driver.set(buildDriver)
-                        name.set("isle-buildkit-${buildDriver}-${project.name}")
-                        node.set("isle-buildkit-${buildDriver}-${project.name}-node")
+                        name.set("isle-buildkit-$buildDriver-${project.name}")
+                        node.set("isle-buildkit-$buildDriver-${project.name}-node")
                         when (buildDriver) {
                             "docker-container" -> {
-                                driverOpts.set(createLocalRegistry.map { task ->
-                                    val network: Property<String> by task.extra
-                                    "network=${network.get()},image=moby/buildkit:v0.8.2"
-                                })
-                                config.set(createLocalRegistry.map { task ->
-                                    val configFile: RegularFileProperty by task.extra
-                                    configFile.get()
-                                })
+                                driverOpts.set(
+                                    createLocalRegistry.map { task ->
+                                        val network: Property<String> by task.extra
+                                        "network=${network.get()},image=moby/buildkit:v0.8.2"
+                                    }
+                                )
+                                config.set(
+                                    createLocalRegistry.map { task ->
+                                        val configFile: RegularFileProperty by task.extra
+                                        configFile.get()
+                                    }
+                                )
                             }
                         }
                         use.set(false)
@@ -518,10 +530,12 @@ class IsleDocker : Plugin<Project> {
                         if (!isDockerBuild) {
                             dependsOn(getIpAddressOfLocalRegistry)
                             // Make sure the local repository is accessible.
-                            addHosts.set(getIpAddressOfLocalRegistry.map {
-                                val ipAddress: Property<String> by it.extra
-                                listOf("${localRepository}:${ipAddress.get()}")
-                            })
+                            addHosts.set(
+                                getIpAddressOfLocalRegistry.map {
+                                    val ipAddress: Property<String> by it.extra
+                                    listOf("$localRepository:${ipAddress.get()}")
+                                }
+                            )
                             // Use the chosen builder.
                             builder.set(createBuilder.map { it.options.name.get() })
                         }
