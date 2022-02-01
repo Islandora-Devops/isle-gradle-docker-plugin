@@ -8,7 +8,6 @@ import com.github.dockerjava.api.exception.NotModifiedException
 import com.github.dockerjava.api.model.Frame
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.property
-import java.time.Duration.ofMinutes
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import kotlin.concurrent.thread
@@ -41,21 +40,6 @@ abstract class DockerContainer : DockerClient() {
     val info = project.objects.property<InspectContainerResponse>()
 
     init {
-        // Rerun test if any of the files in the directory changes, as likely they are
-        // bind mounted or secrets, etc. The could affect the outcome of the test.
-        inputs.dir(project.projectDir)
-
-        // By default limit max execution time to a minute.
-        timeout.convention(ofMinutes(5))
-
-        // If there is a parent project with a build task assume that docker image is the one we want to use unless
-        // specified otherwise.
-        buildTask?.let {
-            val task = it.get()
-            imageId.convention(task.options.tags.get().first())
-            digest.convention(task.digest)
-        }
-
         // Ensure we do not leave container running if something goes wrong.
         project.gradle.buildFinished {
             // May be called before creation of container if build is cancelled etc.

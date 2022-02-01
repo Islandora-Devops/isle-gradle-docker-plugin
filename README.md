@@ -6,8 +6,9 @@
 - [Introduction](#introduction)
 - [Requirements](#requirements)
 - [Building](#building)
-    - [Build and Publish the Plugin](#build-and-publish-the-plugin)
+  - [Build and Publish the Plugin](#build-and-publish-the-plugin)
 - [Using the Plugin](#using-the-plugin)
+- [Using the Plugin from Source](#using-the-plugin-from-source)
 
 ## Introduction
 
