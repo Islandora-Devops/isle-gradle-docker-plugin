@@ -1,8 +1,8 @@
-version = "0.7"
+version = "0.8"
 group = "com.github.nigelgbanks"
 
 plugins {
-    id("com.gradle.plugin-publish") version "0.15.0"
+    id("com.gradle.plugin-publish") version "0.16.0"
     `java-gradle-plugin`
     `kotlin-dsl`
     // Apply the Kotlin JVM plugin to add support for Kotlin.
@@ -56,7 +56,7 @@ pluginBundle {
     mavenCoordinates {
         groupId = "com.github.nigelgbanks"
         artifactId = "isle-docker-plugins"
-        version = "0.7"
+        version = "0.8"
     }
 }
 
