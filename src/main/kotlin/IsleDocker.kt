@@ -14,6 +14,7 @@ import tasks.scan.*
 import utils.*
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -32,6 +33,19 @@ class IsleDocker : Plugin<Project> {
 
         // If set to true resources are freed as soon as they are no longer needed.
         val isCI: Boolean by extra((properties.getOrDefault("isCI", "false") as String).toBoolean())
+
+        // Only reports issues that have fixes.
+        val grypeConfig: File? by extra((properties.getOrDefault("grype.config", null) as String?)
+            ?.let { path ->
+                val file = project.file(path)
+                if (file.exists())
+                    file
+                else
+                    null
+            })
+
+        // Only reports issues that have fixes.
+        val grypeOnlyFixed: Boolean by extra((properties.getOrDefault("grype.only-fixed", "false") as String).toBoolean())
 
         // Triggers build to fail if security vulnerability is discovered.
         // If unspecified the build will continue regardless.
@@ -516,8 +530,10 @@ class IsleDocker : Plugin<Project> {
                 tasks.register<Grype>("grype") {
                     group = isleBuildkitGroup
                     description = "Process the software bill of material with Grype"
+                    config.set(grypeConfig)
                     failOn.set(grypeFailOnSeverity)
                     format.set(grypeFormat)
+                    onlyFixed.set(grypeOnlyFixed)
                     grypeDigestFile.set(pullGrype.flatMap { it.digestFile })
                     sbom.set(syft.flatMap { it.sbom })
                     dependsOn(updateGrypeDB)

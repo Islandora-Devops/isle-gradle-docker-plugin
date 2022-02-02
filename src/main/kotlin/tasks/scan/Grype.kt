@@ -26,6 +26,14 @@ open class Grype : DefaultTask() {
     @Optional
     val failOn = project.objects.property<String>()
 
+    @InputFile
+    @Optional
+    @PathSensitive(PathSensitivity.RELATIVE)
+    val config = project.objects.fileProperty()
+
+    @Input
+    val onlyFixed = project.objects.property<Boolean>().convention(false)
+
     @OutputFile
     val report = project.objects.fileProperty().convention(format.flatMap {
         val dir = project.layout.buildDirectory
@@ -42,20 +50,35 @@ open class Grype : DefaultTask() {
     fun exec() {
         sbom.get().asFile.inputStream().use { input ->
             report.get().asFile.outputStream().use { output ->
-                val failOn = if (failOn.isPresent) listOf("--fail-on", failOn.get()) else listOf()
+                // Arguments to docker.
+                val command = mutableListOf(
+                    "docker", "run",
+                    "--rm",
+                    "-i",
+                    "-e", "GRYPE_DB_CACHE_DIR=/cache",
+                    "-e", "GRYPE_DB_AUTO_UPDATE=false",
+                    "-v", "grype:/cache:", // Volume created by 'GrypeUpdateDB' task.
+                )
+                if (config.isPresent) {
+                    command.addAll(listOf("-v", "${config.get().asFile.absolutePath}:/grype.yaml"))
+                }
+                // Docker image
+                command.add(grypeDigestFile.get().asFile.readText())
+                if (config.isPresent) {
+                    command.addAll(listOf("--config", "/grype.yaml"))
+                }
+                // Arguments to grype.
+                if (failOn.isPresent) {
+                    command.addAll(listOf("--fail-on", failOn.get()))
+                }
+                if (onlyFixed.get()) {
+                    command.add("--only-fixed")
+                }
+                command.addAll( listOf("-o", format.get()))
                 project.exec {
                     standardInput = input
                     standardOutput = output
-                    commandLine = listOf(
-                        "docker", "run",
-                        "--rm",
-                        "-i",
-                        "-e", "GRYPE_DB_CACHE_DIR=/cache",
-                        "-e", "GRYPE_DB_AUTO_UPDATE=false",
-                        "-v", "grype:/cache:", // Volume created by 'GrypeUpdateDB' task.
-                        grypeDigestFile.get().asFile.readText(),
-                        "-o", format.get(),
-                    ) + failOn
+                    commandLine = command
                 }
             }
         }
