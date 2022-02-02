@@ -124,11 +124,11 @@ Alternatively you can rely on the Github actions which will publish when a relea
 
 ## Using the Plugin
 
-To include this plugin for versions 0.8+ add the following to your `build.gradle.kts` file:
+To include this plugin for versions 0.9+ add the following to your `build.gradle.kts` file:
 
 ```kotlin
 plugins {
-  id("com.github.nigelgbanks.IsleDocker") version "0.8"
+  id("com.github.nigelgbanks.IsleDocker") version "0.9"
 }
 ```
 
