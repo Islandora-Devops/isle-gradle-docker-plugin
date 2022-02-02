@@ -269,6 +269,7 @@ class IsleDocker : Plugin<Project> {
                               enabled = false
                               gc = false
                             [registry."$localRepository"]
+                              mirrors = ["$localRepository:5000"]
                               http = true
                               insecure = true
             
@@ -463,7 +464,7 @@ class IsleDocker : Plugin<Project> {
                                 driverOpts.set(
                                     createLocalRegistry.map { task ->
                                         val network: Property<String> by task.extra
-                                        "network=${network.get()},image=moby/buildkit:v0.8.2"
+                                        "network=${network.get()},image=moby/buildkit:v0.9.3"
                                     }
                                 )
                                 config.set(
