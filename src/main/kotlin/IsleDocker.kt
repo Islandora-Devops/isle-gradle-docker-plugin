@@ -2,11 +2,14 @@ import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientImpl
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
+import org.apache.commons.io.FileUtils
+import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.logging.LogLevel
 import org.gradle.api.provider.Property
+import org.gradle.internal.hash.Hashing
 import org.gradle.kotlin.dsl.*
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import tasks.*
@@ -16,7 +19,9 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
+import java.nio.file.Files.setPosixFilePermissions
 
 @Suppress("unused")
 class IsleDocker : Plugin<Project> {
@@ -45,7 +50,12 @@ class IsleDocker : Plugin<Project> {
             })
 
         // Only reports issues that have fixes.
-        val grypeOnlyFixed: Boolean by extra((properties.getOrDefault("grype.only-fixed", "false") as String).toBoolean())
+        val grypeOnlyFixed: Boolean by extra(
+            (properties.getOrDefault(
+                "grype.only-fixed",
+                "false"
+            ) as String).toBoolean()
+        )
 
         // Triggers build to fail if security vulnerability is discovered.
         // If unspecified the build will continue regardless.
@@ -56,22 +66,22 @@ class IsleDocker : Plugin<Project> {
         // Possible values: table, cyclonedx, json, template.
         val grypeFormat: String by extra(properties.getOrDefault("grype.format", "table") as String)
 
-        // The repository to place the images into.
-        val repository by extra(properties.getOrDefault("docker.repository", "local") as String)
-        val isLocalRepository by extra(repository == "local")
-        // It's important to note that we’re using a domain containing a "." here, i.e. localhost.domain.
-        // If it were missing Docker would believe that localhost is a username, as in localhost/ubuntu.
-        // It would then try to push to the default Central Registry rather than our local repository.
-        val localRepository by extra("isle-buildkit.registry")
-
         // The build driver to use.
         val buildDriver by extra(properties.getOrDefault("docker.driver", "docker") as String)
         val isDockerBuild by extra(buildDriver == "docker")
         val isContainerBuild by extra(buildDriver == "docker-container")
 
-        if (!isDockerBuild && !os.isLinux) {
-            error("Only 'docker.driver=docker' is supported on non-linux systems.")
-        }
+        // It's important to note that we’re using a domain containing a "." here, i.e. localhost.domain.
+        // If it were missing Docker would believe that localhost is a username, as in localhost/ubuntu.
+        // It would then try to push to the default Central Registry rather than our local repository.
+        val localRepository = "registry.islandora.dev"
+        val localRepositoryPort = "5000"
+
+        // The repository to place the images into.
+        val repository by extra(properties.getOrDefault(
+            "docker.repository",
+            if (isDockerBuild) "local" else "${localRepository}:${localRepositoryPort}"
+        ) as String)
 
         // Conditionally allows pushing when `docker.driver` is set to `docker`. If we
         // are building with "docker-container" or "kubernetes" we must push as we need
@@ -114,7 +124,7 @@ class IsleDocker : Plugin<Project> {
                     repositories.ifEmpty {
                         if (cacheToEnabled) {
                             // Can only cache from repositories in which we have cached to.
-                            setOf("islandora", if (isLocalRepository) localRepository else repository)
+                            setOf("islandora", repository)
                         } else {
                             // Always cache to/from islandora.
                             setOf("islandora")
@@ -133,7 +143,7 @@ class IsleDocker : Plugin<Project> {
                 .toSet()
                 .let { repositories ->
                     repositories.ifEmpty {
-                        setOf(if (isLocalRepository) localRepository else repository)
+                        setOf(repository)
                     }
                 }
         )
@@ -180,11 +190,66 @@ class IsleDocker : Plugin<Project> {
             dockerClient
         }
 
+        val downloadMkCert by tasks.registering(Download::class) {
+            val version = "v1.4.4"
+            fun url(name: String) = "https://github.com/FiloSottile/mkcert/releases/download/${version}/$name"
+            val (url, sha256) = when {
+                os.isLinux -> {
+                    Pair(
+                        url("mkcert-${version}-linux-amd64"),
+                        "6d31c65b03972c6dc4a14ab429f2928300518b26503f58723e532d1b0a3bbb52"
+                    )
+                }
+                os.isMacOsX -> {
+                    if (arch.isAmd64) {
+                        Pair(
+                            url("mkcert-${version}-darwin-amd64"),
+                            "a32dfab51f1845d51e810db8e47dcf0e6b51ae3422426514bf5a2b8302e97d4e"
+                        )
+                    } else {
+                        Pair(
+                            url("mkcert-${version}-darwin-arm64"),
+                            "c8af0df44bce04359794dad8ea28d750437411d632748049d08644ffb66a60c6"
+                        )
+                    }
+                }
+                os.isWindows -> {
+                    Pair(
+                        url("mkcert-${version}-windows-amd64.exe"),
+                        "d2660b50a9ed59eada480750561c96abc2ed4c9a38c6a24d93e30e0977631398"
+                    )
+                }
+                else -> {
+                    throw RuntimeException("Unsupported Platform")
+                }
+            }
+            this.url.set(url)
+            this.sha256.set(sha256)
+            doLast {
+                if (!os.isWindows) {
+                    // Make all downloaded files executable.
+                    val perms = setOf(
+                        java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                        java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE,
+                        java.nio.file.attribute.PosixFilePermission.GROUP_READ,
+                        java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE,
+                        java.nio.file.attribute.PosixFilePermission.OTHERS_READ,
+                        java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE,
+                    )
+                    setPosixFilePermissions(dest.get().asFile.toPath(), perms)
+                }
+            }
+        }
+
+        val generateCerts by tasks.registering(GenerateCerts::class) {
+            executable.set(downloadMkCert.flatMap { it.dest })
+        }
+
         val installBinFmt by tasks.registering {
             group = isleBuildkitGroup
             description = "Install https://github.com/tonistiigi/binfmt to enable multi-arch builds on Linux."
-            // Cross building with Qemu is already installed with Docker Desktop so we only need to install on Linux hosts.
-            // Additionally it does not work with non x86_64 hosts.
+            // Cross building with Qemu is already installed with Docker Desktop, so we only need to install on Linux.
+            // Additionally, it does not work with non x86_64 hosts.
             onlyIf {
                 isContainerBuild && os.isLinux && arch.isAmd64
             }
@@ -195,7 +260,7 @@ class IsleDocker : Plugin<Project> {
                         "run",
                         "--rm",
                         "--privileged",
-                        "tonistiigi/binfmt:qemu-v5.0.1",
+                        "tonistiigi/binfmt:qemu-v6.2.0-26",
                         "--install", "all"
                     )
                 }
@@ -249,16 +314,21 @@ class IsleDocker : Plugin<Project> {
                             "-d",
                             "--restart=always",
                             "--network=isle-buildkit",
-                            "--env", "REGISTRY_HTTP_ADDR=0.0.0.0:80",
+                            "--env", "REGISTRY_HTTP_ADDR=0.0.0.0:${localRepositoryPort}",
                             "--env", "REGISTRY_STORAGE_DELETE_ENABLED=true",
+                            "--env", "REGISTRY_HTTP_TLS_CERTIFICATE=/certs/cert.pem",
+                            "--env", "REGISTRY_HTTP_TLS_KEY=/certs/privkey.pem",
                             "--name=$localRepository",
+                            "--volume=${generateCerts.get().dest.get().asFile.absolutePath}:/certs",
                             "--volume=${volume.get()}:/var/lib/registry",
+                            "-p", "${localRepositoryPort}:${localRepositoryPort}",
                             "registry:2"
                         )
                     }
                 }
                 // Allow insecure push / pull.
                 configFile.get().asFile.run {
+                    val certPath = generateCerts.get().dest.get().asFile.absolutePath
                     parentFile.mkdirs()
                     writeText(
                         """
@@ -268,17 +338,17 @@ class IsleDocker : Plugin<Project> {
                             [worker.containerd]
                               enabled = false
                               gc = false
-                            [registry."$localRepository"]
-                              mirrors = ["$localRepository:5000"]
-                              http = true
-                              insecure = true
-            
+                            [registry."${localRepository}:${localRepositoryPort}"]
+                              ca=["${certPath}/rootCA.pem"]
+                              [[registry."${localRepository}:${localRepositoryPort}".keypair]]
+                                key="${certPath}/privkey.pem"
+                                cert="${certPath}/cert.pem"
                         """.trimIndent()
                     )
                 }
             }
             mustRunAfter("destroyLocalRegistry")
-            finalizedBy("updateHostsFile")
+            dependsOn(generateCerts)
         }
 
         // Destroys resources created by createLocalRegistry.
@@ -346,38 +416,6 @@ class IsleDocker : Plugin<Project> {
             dependsOn(createLocalRegistry)
         }
 
-        // Generally only needed for debugging local repository.
-        tasks.register("updateHostsFile") {
-            group = isleBuildkitGroup
-            description = "Modifies /etc/hosts to include reference to local repository on the host"
-            onlyIf { os.isLinux }
-            doLast {
-                val ipAddress = getIpAddressOfLocalRegistry.get().let { task ->
-                    val ipAddress: Property<String> by task.extra
-                    ipAddress.get()
-                }
-                exec {
-                    // Removes any existing references to the local repository and appends local repository to the bottom.
-                    standardInput = ByteArrayInputStream(
-                        """
-                        sed -n \
-                            -e '/^.*$localRepository/!p' \
-                            -e '${'$'}a$ipAddress\t$localRepository' \
-                            /etc/hosts > /tmp/hosts
-                        cat /tmp/hosts > /etc/hosts
-                        """.trimIndent().toByteArray()
-                    )
-                    commandLine = listOf(
-                        "docker", "run", "--rm", "-i",
-                        "-v", "/etc/hosts:/etc/hosts",
-                        "alpine:3.11.6",
-                        "ash", "-s"
-                    )
-                }
-            }
-            dependsOn(getIpAddressOfLocalRegistry)
-        }
-
         val clean by tasks.registering {
             group = isleBuildkitGroup
             description = "Destroy absolutely everything"
@@ -405,12 +443,14 @@ class IsleDocker : Plugin<Project> {
         }
 
         val pullSyft by tasks.registering(DockerPull::class) {
-            description = "Pull anchore/syft for use in generating a Software Bill of Materials for vunerability scanning."
+            description =
+                "Pull anchore/syft for use in generating a Software Bill of Materials for vunerability scanning."
             name.set("anchore/syft")
         }
 
         val pullGrype by tasks.registering(DockerPull::class) {
-            description = "Pull anchore/grype for use in processing a Software Bill of Materials for vunerability scanning."
+            description =
+                "Pull anchore/grype for use in processing a Software Bill of Materials for vunerability scanning."
             name.set("anchore/grype")
         }
 
@@ -442,12 +482,6 @@ class IsleDocker : Plugin<Project> {
                     "tag" to tag
                 )
 
-                val localRepositoryTags = imageTags(localRepository)
-                val localRepositoryBuildArgs = mapOf(
-                    "repository" to localRepository,
-                    "tag" to tag
-                )
-
                 // Allows building both x86_64 and arm64 using emulation supported in version 19.03 and up as well Docker Desktop.
                 val createBuilder by tasks.registering(DockerBuilder::class) {
                     group = isleBuildkitGroup
@@ -464,7 +498,7 @@ class IsleDocker : Plugin<Project> {
                                 driverOpts.set(
                                     createLocalRegistry.map { task ->
                                         val network: Property<String> by task.extra
-                                        "network=${network.get()},image=moby/buildkit:v0.9.3"
+                                        "network=${network.get()},image=moby/buildkit:v0.10.3"
                                     }
                                 )
                                 config.set(
@@ -511,11 +545,6 @@ class IsleDocker : Plugin<Project> {
                     description = "Build docker image(s)"
                     options.run {
                         push.set(pushToRemote)
-                        // Force the tags / build args to be relative to our local repository.
-                        if (!isDockerBuild && isLocalRepository) {
-                            tags.set(localRepositoryTags)
-                            buildArgs.set(localRepositoryBuildArgs)
-                        }
                         mustRunAfter("delete")
                     }
                 }
