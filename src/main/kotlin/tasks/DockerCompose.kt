@@ -24,11 +24,12 @@ abstract class DockerCompose : DockerClient() {
 
     data class DockerComposeFile(val services: Map<String, Service>) {
         companion object {
-            fun deserialize(file: File): DockerComposeFile = ObjectMapper(YAMLFactory())
-                .registerModule(KotlinModule())
-                .configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .readValue(file)
+            fun deserialize(file: File): DockerComposeFile =
+                ObjectMapper(YAMLFactory())
+                    .registerModule(KotlinModule.Builder().build())
+                    .configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true)
+                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .readValue(file)
         }
     }
 

@@ -10,7 +10,7 @@ open class GrypeUpdateDB : DockerContainer() {
 
     init {
         // Always fetch the latest database.
-        outputs.upToDateWhen { task -> false }
+        outputs.upToDateWhen { false }
     }
 
     @TaskAction
