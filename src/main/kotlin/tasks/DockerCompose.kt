@@ -137,7 +137,16 @@ abstract class DockerCompose : DockerClient() {
         isIgnoreExitValue = ignoreExitValue
         if (output != null) standardOutput = output
         if (error != null) errorOutput = error
-        commandLine("docker-compose", "--project-name", project.path.replace(":", "_"), *args)
+        commandLine(
+            "docker",
+            "compose",
+            "--project-name",
+            project.path
+                .replace(":", "_")
+                .toLowerCase()
+                .removePrefix("_"),
+            *args
+        )
     }
 
     fun up(vararg args: String, ignoreExitValue: Boolean = false) = try {
