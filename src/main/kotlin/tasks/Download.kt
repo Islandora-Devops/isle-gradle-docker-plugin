@@ -1,9 +1,12 @@
-package tasks;
+package tasks
 
 import org.apache.commons.io.FileUtils
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
-import org.gradle.api.tasks.*
+import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.TaskAction
 import org.gradle.internal.hash.Hashing
 import org.gradle.kotlin.dsl.property
 import java.net.URI

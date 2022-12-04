@@ -1,30 +1,21 @@
-version = "0.11"
-group = "com.github.nigelgbanks"
-
-plugins {
-    id("com.gradle.plugin-publish") version "0.16.0"
-    `java-gradle-plugin`
-    `kotlin-dsl`
-    // Apply the Kotlin JVM plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version "1.4.31"
-    `maven-publish`
-}
+version = "1.0"
+group = "io.github.nigelgbanks"
 
 repositories {
     mavenCentral()
     gradlePluginPortal()
 }
 
+plugins {
+    id("com.gradle.plugin-publish") version "1.1.0"
+    `java-gradle-plugin`
+    `kotlin-dsl`
+}
+
 dependencies {
-    // Align versions of all Kotlin components
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    // Use the Kotlin JDK 8 standard library.
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("com.bmuschko:gradle-docker-plugin:7.1.0")
-    implementation("org.apache.commons:commons-compress:1.21")
     implementation("org.apache.commons:commons-io:1.3.2")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.1")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.1")
 }
 
 java {
@@ -33,42 +24,58 @@ java {
 }
 
 gradlePlugin {
+    website.set("https://github.com/Islandora-Devops/isle-gradle-docker-plugin")
+    vcsUrl.set("https://github.com/Islandora-Devops/isle-gradle-docker-plugin")
+
     plugins {
-        create("IsleDocker") {
-            id = "com.github.nigelgbanks.IsleDocker"
-            implementationClass = "IsleDocker"
+        create("Isle") {
+            id = "io.github.nigelgbanks.Isle"
+            implementationClass = "plugins.IslePlugin"
+            displayName = "Isle"
+            description = "Main gradle plugin for the Islandora Isle project"
+            tags.set(listOf("isle"))
         }
-    }
-}
-
-// The configuration example below shows the minimum required properties
-// configured to publish your plugin to the plugin portal
-pluginBundle {
-    website = "https://github.com/Islandora-Devops/isle-gradle-docker-plugin"
-    vcsUrl = "https://github.com/Islandora-Devops/isle-gradle-docker-plugin"
-    description = "Gradle plugin that supports building interdependent Docker images with Buildkit support for the Isle project."
-    tags = listOf("isle", "islandora", "docker")
-    (plugins) {
-        "IsleDocker" {
-            displayName = "Docker build plugin for the Islandora Isle project"
+        create("IsleBuildCtl") {
+            id = "io.github.nigelgbanks.IsleBuildCtl"
+            implementationClass = "plugins.BuildCtlPlugin"
+            displayName = "IsleBuildCtl"
+            description = "Wrapper around buildctrl for use with buildkit"
+            tags.set(listOf("isle"))
         }
-    }
-    mavenCoordinates {
-        groupId = "com.github.nigelgbanks"
-        artifactId = "isle-docker-plugins"
-        version = "0.11"
-    }
-}
-
-publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/${System.getenv("GITHUB_REPOSITORY")}")
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-            }
+        create("IsleBuildKit") {
+            id = "io.github.nigelgbanks.IsleBuildKit"
+            implementationClass = "plugins.BuildKitPlugin"
+            displayName = "IsleBuildKit"
+            description = "Provides buildkit backend via a Docker container"
+            tags.set(listOf("isle"))
+        }
+        create("IsleCertificateGeneration") {
+            id = "io.github.nigelgbanks.IsleCertificateGeneration"
+            implementationClass = "plugins.CertificateGenerationPlugin"
+            displayName = "IsleCertificateGeneration"
+            description = "Generates development certificates"
+            tags.set(listOf("isle"))
+        }
+        create("IsleReports") {
+            id = "io.github.nigelgbanks.IsleReports"
+            implementationClass = "plugins.ReportsPlugin"
+            displayName = "IsleReports"
+            description = "Generates security reports for a single project"
+            tags.set(listOf("isle"))
+        }
+        create("IsleRegistry") {
+            id = "io.github.nigelgbanks.IsleRegistry"
+            implementationClass = "plugins.RegistryPlugin"
+            displayName = "IsleRegistry"
+            description = "Provides local Docker Registry"
+            tags.set(listOf("isle"))
+        }
+        create("IsleTest") {
+            id = "io.github.nigelgbanks.IsleTest"
+            implementationClass = "plugins.TestPlugin"
+            displayName = "IsleTest"
+            description = "Perform tests with docker-compose files"
+            tags.set(listOf("isle"))
         }
     }
 }
