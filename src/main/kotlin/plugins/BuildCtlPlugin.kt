@@ -9,6 +9,8 @@ import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.*
+import plugins.BuildKitPlugin.Companion.buildKitCacheRepository
+import plugins.BuildKitPlugin.Companion.buildKitCacheTag
 import plugins.BuildKitPlugin.Companion.buildKitPlatforms
 import plugins.BuildKitPlugin.Companion.buildKitRepository
 import plugins.BuildKitPlugin.Companion.buildKitTag
@@ -157,9 +159,10 @@ class BuildCtlPlugin : Plugin<Project> {
             }
             additionalArguments.addAll(
                 listOf(
-                    "--import-cache", "type=registry,ref=islandora/${project.name}:cache",
-                )
+                    "--import-cache", "type=registry,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
+                    )
             )
+            // Use GitHub action cache if available.
             if (System.getenv("GITHUB_ACTIONS") == "true") {
                 additionalArguments.addAll(
                     listOf(
@@ -167,13 +170,14 @@ class BuildCtlPlugin : Plugin<Project> {
                         "--import-cache", "type=gha",
                     )
                 )
-                if (System.getenv("GITHUB_REF_NAME") == "main") {
-                    additionalArguments.addAll(
-                        listOf(
-                            "--export-cache", "type=registry,mode=max,compression=estargz,ref=islandora/${project.name}:cache",
-                        )
+            }
+            // Only update the cache image when building the main branch.
+            if (System.getenv("GITHUB_REF_NAME") == "main") {
+                additionalArguments.addAll(
+                    listOf(
+                        "--export-cache", "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
                     )
-                }
+                )
             }
             images.get().joinToString(",").let {
                 additionalArguments.addAll(

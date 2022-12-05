@@ -44,6 +44,14 @@ class BuildKitPlugin : Plugin<Project> {
         val Project.buildKitTag: String
             get() = properties.getOrDefault("buildkit.build-arg.tag", "latest") as String
 
+        // The repository to push/pull image cache to/from.
+        val Project.buildKitCacheRepository: String
+            get() = properties.getOrDefault("buildkit.cache.repository", "islandora") as String
+
+        // The repository to push/pull image cache to/from.
+        val Project.buildKitCacheTag: String
+            get() = properties.getOrDefault("buildkit.cache.tag", "cache") as String
+
         val Project.buildKitContainer: String
             get() = properties.getOrDefault("buildkit.container", "isle-buildkit") as String
 

@@ -128,7 +128,7 @@ To include this plugin for versions 0.11+ add the following to your `build.gradl
 
 ```kotlin
 plugins {
-  id("com.github.nigelgbanks.IsleDocker") version "0.11"
+  id("io.github.nigelgbanks.Isle") version "1.0.1"
 }
 ```
 
@@ -153,14 +153,14 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("com.github.nigelgbanks:isle-gradle-docker-plugin") {
+        classpath("io.github.nigelgbanks:isle-gradle-docker-plugin") {
           version {
             branch = "BRANCH_NAME"
           }
         }
     }
 }
-apply(plugin = "com.github.nigelgbanks.IsleDocker")
+apply(plugin = "io.github.nigelgbanks.Isle")
 ```
 
 Note that it will only use **committed** changes.
