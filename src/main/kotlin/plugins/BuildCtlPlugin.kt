@@ -157,27 +157,27 @@ class BuildCtlPlugin : Plugin<Project> {
                     )
                 )
             }
+            // Always pull from the main cache.
             additionalArguments.addAll(
                 listOf(
                     "--import-cache",
                     "type=registry,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
                 )
             )
-            // Use GitHub action cache if available.
-            if (System.getenv("GITHUB_ACTIONS") == "true") {
-                additionalArguments.addAll(
-                    listOf(
-                        "--export-cache", "type=gha,mode=max",
-                        "--import-cache", "type=gha",
-                    )
-                )
-            }
-            // Only update the cache image when building the main branch.
+            // Only update the main cache image when building the main branch, no caching for tags.
             if (System.getenv("GITHUB_REF_NAME") == "main") {
                 additionalArguments.addAll(
                     listOf(
                         "--export-cache",
                         "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
+                    )
+                )
+            }
+            else if (System.getenv("GITHUB_REF_NAME").isNotBlank() && System.getenv("GITHUB_REF_TYPE") == "branch") {
+                additionalArguments.addAll(
+                    listOf(
+                        "--export-cache",
+                        "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}-${project.buildKitCacheTag}",
                     )
                 )
             }

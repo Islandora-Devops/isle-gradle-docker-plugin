@@ -162,7 +162,7 @@ class BuildKitPlugin : Plugin<Project> {
         fun exec() {
             // GitHub Actions has limited disk space, so we must clean up as we go.
             // Additionally, when using CI we do not push to the local registry, but use a remote instead.
-            // Keep only up to 5GB of storage.
+            // Keep only up to 8GB of storage.
             if (System.getenv("GITHUB_ACTIONS") == "true") {
                 config.get().asFile.writeText(
                     """
@@ -171,7 +171,7 @@ class BuildKitPlugin : Plugin<Project> {
                     [worker.oci]
                       enabled = true
                       gc = true
-                      gckeepstorage = 5000
+                      gckeepstorage = 8000
                 """.trimIndent()
                 )
             } else {

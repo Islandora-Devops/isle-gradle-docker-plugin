@@ -127,7 +127,7 @@ To include this plugin for versions 0.11+ add the following to your `build.gradl
 
 ```kotlin
 plugins {
-    id("io.github.nigelgbanks.Isle") version "1.0.5"
+    id("io.github.nigelgbanks.Isle") version "1.0.6"
 }
 ```
 

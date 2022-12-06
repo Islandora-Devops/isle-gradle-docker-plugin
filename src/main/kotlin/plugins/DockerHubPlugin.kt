@@ -20,6 +20,7 @@ import org.gradle.workers.WorkParameters
 import org.gradle.workers.WorkQueue
 import org.gradle.workers.WorkerExecutor
 import plugins.IslePlugin.Companion.isDockerProject
+import plugins.BuildKitPlugin.Companion.buildKitCacheTag
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -101,7 +102,10 @@ class DockerHubPlugin : Plugin<Project> {
                 .filterNot { it.contains("^.*/HEAD".toRegex()) } // Ignore HEAD
                 .map { it.replace(".*/".toRegex(), "") } // Strip remotes.
 
-            val imageTags: Set<String> = (gitTags + gitBranches + excludeTags.get())
+            val gitBranchCaches = gitBranches.map { "${project.buildKitCacheTag}-${it}" }
+
+            val imageTags: Set<String> = (gitTags + gitBranches + gitBranchCaches + excludeTags.get())
+                .plus("cache") // Never delete main cache tag
                 .plus("latest") // Never delete latest
                 .filter { it.isNotEmpty() }
                 .toSet()
