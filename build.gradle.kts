@@ -1,4 +1,4 @@
-version = "1.0.1"
+version = "1.0.2"
 group = "io.github.nigelgbanks"
 
 repositories {
@@ -19,8 +19,8 @@ dependencies {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 gradlePlugin {
@@ -54,6 +54,13 @@ gradlePlugin {
             implementationClass = "plugins.CertificateGenerationPlugin"
             displayName = "IsleCertificateGeneration"
             description = "Generates development certificates"
+            tags.set(listOf("isle"))
+        }
+        create("IsleDockerHub") {
+            id = "io.github.nigelgbanks.IsleDockerHub"
+            implementationClass = "plugins.DockerHubPlugin"
+            displayName = "IsleDockerHub"
+            description = "Tasks for managing DockerHub tags, etc."
             tags.set(listOf("isle"))
         }
         create("IsleReports") {

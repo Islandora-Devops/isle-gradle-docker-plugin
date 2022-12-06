@@ -21,26 +21,26 @@ class RegistryPlugin : Plugin<Project> {
         // It would then try to push to the default Central Registry rather than our local repository.
         // *.islandora.dev makes for a good default as we can generate certificates for it and avoid many problems.
         val Project.registryDomain: String
-            get() = properties.getOrDefault("registry.domain", "islandora.dev") as String
+            get() = properties.getOrDefault("isle.registry.domain", "islandora.dev") as String
 
         val Project.registryPort: Int
-            get() = (properties.getOrDefault("registry.port", "443") as String).toInt()
+            get() = (properties.getOrDefault("isle.registry.port", "443") as String).toInt()
 
         val Project.bindPort: Boolean
-            get() = (properties.getOrDefault("registry.bind.port", "false") as String).toBoolean()
+            get() = (properties.getOrDefault("isle.registry.bind.port", "false") as String).toBoolean()
 
         // The container should have the same name as the domain so that buildkit builder can find it by name.
         val Project.registryContainer: String
-            get() = properties.getOrDefault("registry.container", "isle-registry") as String
+            get() = properties.getOrDefault("isle.registry.container", "isle-registry") as String
 
         val Project.registryNetwork: String
-            get() = properties.getOrDefault("registry.network", "isle-registry") as String
+            get() = properties.getOrDefault("isle.registry.network", "isle-registry") as String
 
         val Project.registryVolume: String
-            get() = properties.getOrDefault("registry.volume", "isle-registry") as String
+            get() = properties.getOrDefault("isle.registry.volume", "isle-registry") as String
 
         val Project.registryImage: String
-            get() = properties.getOrDefault("registry.image", "registry:2") as String
+            get() = properties.getOrDefault("isle.registry.image", "registry:2") as String
     }
 
     open class CreateRegistry : DockerCreateContainer() {

@@ -37,35 +37,35 @@ class BuildKitPlugin : Plugin<Project> {
         // It will default to the local registry if not given.
         val Project.buildKitRepository: Provider<String>
             get() = rootProject.tasks.named<CreateRegistry>("createRegistry").map {
-                (properties["buildkit.build-arg.repository"] as String?) ?: it.registry
+                (properties["isle.buildkit.build-arg.repository"] as String?) ?: it.registry
             }
 
         // The tag to use when building/pushing images.
         val Project.buildKitTag: String
-            get() = properties.getOrDefault("buildkit.build-arg.tag", "latest") as String
+            get() = properties.getOrDefault("isle.buildkit.build-arg.tag", "latest") as String
 
         // The repository to push/pull image cache to/from.
         val Project.buildKitCacheRepository: String
-            get() = properties.getOrDefault("buildkit.cache.repository", "islandora") as String
+            get() = properties.getOrDefault("isle.buildkit.cache.repository", "islandora") as String
 
         // The repository to push/pull image cache to/from.
         val Project.buildKitCacheTag: String
-            get() = properties.getOrDefault("buildkit.cache.tag", "cache") as String
+            get() = properties.getOrDefault("isle.buildkit.cache.tag", "cache") as String
 
         val Project.buildKitContainer: String
-            get() = properties.getOrDefault("buildkit.container", "isle-buildkit") as String
+            get() = properties.getOrDefault("isle.buildkit.container", "isle-buildkit") as String
 
         val Project.buildKitVolume: String
-            get() = properties.getOrDefault("buildkit.volume", "isle-buildkit") as String
+            get() = properties.getOrDefault("isle.buildkit.volume", "isle-buildkit") as String
 
         val Project.buildKitImage: String
-            get() = properties.getOrDefault("buildkit.image", "moby/buildkit:v0.10.6") as String
+            get() = properties.getOrDefault("isle.buildkit.image", "moby/buildkit:v0.10.6") as String
 
         val Project.buildKitQemuImage: String
-            get() = properties.getOrDefault("buildkit.qemu.image", "tonistiigi/binfmt:qemu-v7.0.0-28") as String
+            get() = properties.getOrDefault("isle.buildkit.qemu.image", "tonistiigi/binfmt:qemu-v7.0.0-28") as String
 
         val Project.buildKitPlatforms: Set<String>
-            get() = (properties.getOrDefault("buildkit.platforms", "") as String)
+            get() = (properties.getOrDefault("isle.buildkit.platforms", "") as String)
                 .split(',')
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
@@ -414,7 +414,9 @@ class BuildKitPlugin : Plugin<Project> {
                     .rootProject
                     .allprojects
                     .filter { it.isDockerProject && requiredImages.contains(it.name) }
-                    .map { it.tasks.named<BuildCtlPlugin.BuildCtlBuildImage>("build").flatMap { task -> task.metadata } }
+                    .map {
+                        it.tasks.named<BuildCtlPlugin.BuildCtlBuildImage>("build").flatMap { task -> task.metadata }
+                    }
                 sourceBuildMetadata.setFrom(buildMetadata)
             }
         }

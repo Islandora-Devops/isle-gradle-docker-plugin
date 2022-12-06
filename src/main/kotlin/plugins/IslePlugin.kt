@@ -32,6 +32,7 @@ class IslePlugin : Plugin<Project> {
         apply<BuildKitPlugin>()
         apply<ReportsPlugin>()
         apply<TestsPlugin>()
+        apply<DockerHubPlugin>()
 
         extensions.findByName("buildScan")?.withGroovyBuilder {
             setProperty("termsOfServiceUrl", "https://gradle.com/terms-of-service")

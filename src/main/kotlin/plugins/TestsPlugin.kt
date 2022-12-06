@@ -2,7 +2,9 @@ package plugins
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.*
+import org.gradle.kotlin.dsl.apply
+import org.gradle.kotlin.dsl.named
+import org.gradle.kotlin.dsl.withType
 import plugins.BuildCtlPlugin.BuildCtlLoadImage
 import plugins.IslePlugin.Companion.isDockerProject
 import plugins.TestPlugin.DockerComposeUp
@@ -30,8 +32,8 @@ class TestsPlugin : Plugin<Project> {
                         tasks.withType<DockerComposeUp> {
                             val services = dockerCompose.services.keys
                             val metadata = project.rootProject.allprojects
-                                    .filter { it.isDockerProject && services.contains(it.name) }
-                                    .map { it.tasks.named<BuildCtlLoadImage>("load").flatMap { task -> task.metadata } }
+                                .filter { it.isDockerProject && services.contains(it.name) }
+                                .map { it.tasks.named<BuildCtlLoadImage>("load").flatMap { task -> task.metadata } }
                             metadataFiles.setFrom(metadata)
                         }
                     }

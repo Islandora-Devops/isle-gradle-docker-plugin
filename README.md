@@ -6,7 +6,7 @@
 - [Introduction](#introduction)
 - [Requirements](#requirements)
 - [Building](#building)
-  - [Build and Publish the Plugin](#build-and-publish-the-plugin)
+    - [Build and Publish the Plugin](#build-and-publish-the-plugin)
 - [Using the Plugin](#using-the-plugin)
 - [Using the Plugin from Source](#using-the-plugin-from-source)
 
@@ -22,14 +22,13 @@ The dependencies are resolved by parsing the Dockerfile and looking for ``FROM``
 statements to determine which images are required to build it.
 
 This means to add a new Docker image to the project you do not need to modify the build scripts, simply add a new folder
-and place your Dockerfile inside of it and it will be discovered built in the correct order relative to the other
-images.
+and place your Dockerfile inside it, and it will be discovered built in the correct order relative to the other images.
 
 ## Requirements
 
 To build this plugin the following is required:
 
-- [OpenJDK or Oracle JDK 8+](https://www.java.com/en/download/)
+- [OpenJDK or Oracle JDK 11+](https://www.java.com/en/download/)
 
 ## Building
 
@@ -128,7 +127,7 @@ To include this plugin for versions 0.11+ add the following to your `build.gradl
 
 ```kotlin
 plugins {
-  id("io.github.nigelgbanks.Isle") version "1.0.1"
+    id("io.github.nigelgbanks.Isle") version "1.0.2"
 }
 ```
 
@@ -140,7 +139,7 @@ the `settings.gradle.kts` file that allows the plugin source to be discoverable:
 ```kotlin
 sourceControl {
     gitRepository(uri("file:///PATH_TO_FOLDER/isle-gradle-docker-plugin/.git")) {
-        producesModule("com.github.nigelgbanks:isle-gradle-docker-plugin")
+        producesModule("io.github.nigelgbanks:isle-gradle-docker-plugin")
     }
 }
 ```
@@ -154,9 +153,9 @@ buildscript {
     }
     dependencies {
         classpath("io.github.nigelgbanks:isle-gradle-docker-plugin") {
-          version {
-            branch = "BRANCH_NAME"
-          }
+            version {
+                branch = "BRANCH_NAME"
+            }
         }
     }
 }

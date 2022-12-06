@@ -159,8 +159,9 @@ class BuildCtlPlugin : Plugin<Project> {
             }
             additionalArguments.addAll(
                 listOf(
-                    "--import-cache", "type=registry,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
-                    )
+                    "--import-cache",
+                    "type=registry,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
+                )
             )
             // Use GitHub action cache if available.
             if (System.getenv("GITHUB_ACTIONS") == "true") {
@@ -175,7 +176,8 @@ class BuildCtlPlugin : Plugin<Project> {
             if (System.getenv("GITHUB_REF_NAME") == "main") {
                 additionalArguments.addAll(
                     listOf(
-                        "--export-cache", "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
+                        "--export-cache",
+                        "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
                     )
                 )
             }
