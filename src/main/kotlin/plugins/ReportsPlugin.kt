@@ -5,11 +5,9 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFile
-import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.OutputDirectory
-import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.*
+import plugins.IslePlugin.Companion.execCaptureOutput
 import plugins.IslePlugin.Companion.isDockerProject
 import tasks.DockerPull
 
@@ -55,13 +53,21 @@ class ReportsPlugin : Plugin<Project> {
         @OutputDirectory
         val database = project.objects.directoryProperty().convention(project.layout.buildDirectory.dir("grype"))
 
+        @Internal
+        val uid = project.objects.property<Int>()
+
+        @Internal
+        val gid = project.objects.property<Int>()
+
         private val baseArguments: List<String>
             get() = listOf(
                 "docker",
                 "run",
                 "--rm",
+                "-u", "${uid.get()}:${gid.get()}",
                 "-e", "GRYPE_DB_CACHE_DIR=/cache",
                 "-v", "${database.get().asFile.absolutePath}:/cache",
+                "-v", "/tmp:/tmp",
                 image.get(),
             )
 
@@ -83,6 +89,8 @@ class ReportsPlugin : Plugin<Project> {
                 // If the database is present check to make sure it is up-to-date, if not run again.
                 !database.get().asFile.exists() || upToDate()
             }
+            uid.set(project.execCaptureOutput(listOf("id", "-u"), "Failed to get UID").toInt())
+            gid.set(project.execCaptureOutput(listOf("id", "-g"), "Failed to get GID").toInt())
         }
 
         @TaskAction
