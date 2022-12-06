@@ -165,12 +165,10 @@ class BuildCtlPlugin : Plugin<Project> {
             )
             // Use GitHub action cache if available.
             if (System.getenv("GITHUB_ACTIONS") == "true") {
-                val cacheUrl = System.getenv("ACTIONS_CACHE_URL")
-                val runtimeToken = System.getenv("ACTIONS_RUNTIME_TOKEN")
                 additionalArguments.addAll(
                     listOf(
-                        "--export-cache", "type=gha,url=$cacheUrl,token=$runtimeToken",
-                        "--import-cache", "type=gha,url=$cacheUrl,token=$runtimeToken",
+                        "--export-cache", "type=gha,mode=max",
+                        "--import-cache", "type=gha",
                     )
                 )
             }
