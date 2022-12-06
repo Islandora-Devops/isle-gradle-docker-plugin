@@ -42,7 +42,7 @@ class BuildKitPlugin : Plugin<Project> {
 
         // The tag to use when building/pushing images.
         val Project.buildKitTag: String
-            get() = properties.getOrDefault("isle.buildkit.build-arg.tag", "latest") as String
+            get() = (properties.getOrDefault("isle.buildkit.build-arg.tag", "latest") as String).replace("""[^a-zA-Z0-9._-]?""".toRegex(), "-")
 
         // The repository to push/pull image cache to/from.
         val Project.buildKitCacheRepository: String

@@ -176,8 +176,10 @@ class BuildCtlPlugin : Plugin<Project> {
             else if (System.getenv("GITHUB_REF_NAME").isNotBlank() && System.getenv("GITHUB_REF_TYPE") == "branch") {
                 additionalArguments.addAll(
                     listOf(
+                        "--import-cache",
+                        "type=registry,ref=${project.buildKitCacheRepository}/${project.name}:${tag.get()}",
                         "--export-cache",
-                        "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}-${project.buildKitCacheTag}",
+                        "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}-${tag.get()}",
                     )
                 )
             }
