@@ -96,7 +96,7 @@ class TestPlugin : Plugin<Project> {
         }
 
         @Input
-        val exitCodeConditions = project.objects.mapProperty<String, Int>()
+        val exitCodeConditions = project.objects.mapProperty<String, Set<Int>>()
 
         @Input
         val outputConditions = project.objects.mapProperty<String, String>()
@@ -111,7 +111,7 @@ class TestPlugin : Plugin<Project> {
             timeout.convention(Duration.ofMinutes(5))
 
             // Expect each container exits 0 by default.
-            exitCodeConditions.putAll(dockerCompose.services.mapValues { 0 })
+            exitCodeConditions.putAll(dockerCompose.services.mapValues { setOf(0) })
         }
 
         // Gets the identifiers of all the services created by the docker compose file.
@@ -158,7 +158,12 @@ class TestPlugin : Plugin<Project> {
 
         // Helper for writing tests which need to look for specific exit codes.
         fun expectExitCode(service: String, exitCode: Int) {
-            exitCodeConditions.put(service, exitCode)
+            exitCodeConditions.get().replace(service, mutableSetOf(exitCode))
+        }
+
+        // Helper for writing tests which need to look for specific exit codes.
+        fun expectExitCodes(service: String, vararg exitCodes: Int) {
+            exitCodeConditions.get().replace(service, exitCodes.toSet())
         }
 
         // Monitor output of the given service.
@@ -240,10 +245,10 @@ class TestPlugin : Plugin<Project> {
                 workingDir = project.projectDir
                 commandLine = baseArguments + listOf("stop")
             }
-            exitCodeConditions.get().forEach { (service, expectedExitCode) ->
+            exitCodeConditions.get().forEach { (service, expectedExitCodes) ->
                 val exitCode = exitCodes[service]
-                logger.info("Service ($service) exited with: $exitCode, expected $expectedExitCode")
-                if (exitCode != expectedExitCode) {
+                logger.info("Service ($service) exited with: $exitCode, expected ${expectedExitCodes.joinToString(", ")}")
+                if (!expectedExitCodes.contains(exitCode)) {
                     failedConditions = true
                 }
             }
