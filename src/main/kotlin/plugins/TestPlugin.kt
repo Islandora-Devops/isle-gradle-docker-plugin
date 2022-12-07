@@ -158,12 +158,12 @@ class TestPlugin : Plugin<Project> {
 
         // Helper for writing tests which need to look for specific exit codes.
         fun expectExitCode(service: String, exitCode: Int) {
-            exitCodeConditions.get().replace(service, mutableSetOf(exitCode))
+            exitCodeConditions.get()[service] = setOf(exitCode)
         }
 
         // Helper for writing tests which need to look for specific exit codes.
         fun expectExitCodes(service: String, vararg exitCodes: Int) {
-            exitCodeConditions.get().replace(service, exitCodes.toSet())
+            exitCodeConditions.get()[service] = exitCodes.toSet()
         }
 
         // Monitor output of the given service.

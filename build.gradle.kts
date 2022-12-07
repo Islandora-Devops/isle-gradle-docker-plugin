@@ -1,4 +1,3 @@
-version = "1.0.9"
 group = "io.github.nigelgbanks"
 
 repositories {
