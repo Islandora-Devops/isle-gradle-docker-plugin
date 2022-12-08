@@ -6,7 +6,7 @@
 - [Introduction](#introduction)
 - [Requirements](#requirements)
 - [Building](#building)
-    - [Build and Publish the Plugin](#build-and-publish-the-plugin)
+  - [Build and Publish the Plugin](#build-and-publish-the-plugin)
 - [Using the Plugin](#using-the-plugin)
 - [Using the Plugin from Source](#using-the-plugin-from-source)
 
@@ -127,7 +127,7 @@ To include this plugin for versions 0.11+ add the following to your `build.gradl
 
 ```kotlin
 plugins {
-    id("io.github.nigelgbanks.Isle") version "1.0.11"
+    id("io.github.nigelgbanks.Isle") version "1.0.12"
 }
 ```
 

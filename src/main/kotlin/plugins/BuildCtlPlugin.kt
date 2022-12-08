@@ -6,11 +6,15 @@ import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.commons.io.output.NullOutputStream
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.ConfigurableFileTree
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.*
 import plugins.BuildKitPlugin.Companion.buildKitCacheRepository
 import plugins.BuildKitPlugin.Companion.buildKitCacheTag
+import plugins.BuildKitPlugin.Companion.buildKitImages
 import plugins.BuildKitPlugin.Companion.buildKitPlatforms
 import plugins.BuildKitPlugin.Companion.buildKitRepository
 import plugins.BuildKitPlugin.Companion.buildKitTag
@@ -25,7 +29,7 @@ class BuildCtlPlugin : Plugin<Project> {
         // PATH (i.e. Docker build context), trigger re-run if changed.
         @InputFiles
         @PathSensitive(PathSensitivity.RELATIVE)
-        val context = project.objects.fileTree().setDir(project.layout.projectDirectory)
+        val context: ConfigurableFileTree = project.objects.fileTree().setDir(project.layout.projectDirectory)
 
         @Input
         val repository = project.objects.property<String>().convention(project.buildKitRepository)
@@ -37,7 +41,7 @@ class BuildCtlPlugin : Plugin<Project> {
         val platforms = project.objects.listProperty<String>().convention(project.buildKitPlatforms)
 
         @OutputFile
-        val metadata = project.objects.fileProperty()
+        val metadata: RegularFileProperty = project.objects.fileProperty()
 
         @get:Internal
         val image: Provider<String>
@@ -77,10 +81,10 @@ class BuildCtlPlugin : Plugin<Project> {
         // If we source images change we should rebuild.
         @InputFiles
         @PathSensitive(PathSensitivity.RELATIVE)
-        val sourceBuildMetadata = project.objects.fileCollection()
+        val sourceBuildMetadata: ConfigurableFileCollection = project.objects.fileCollection()
 
         @Input
-        val images = project.objects.listProperty<String>()
+        val images = project.objects.setProperty<String>().convention(project.buildKitImages)
 
         // Gets list of images names without repository or tag, required to build this image.
         // This assumes all images are built by this project.
@@ -164,8 +168,11 @@ class BuildCtlPlugin : Plugin<Project> {
                     "type=registry,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
                 )
             )
-            // Only update the main cache image when building the main branch, no caching for tags.
-            if (System.getenv("GITHUB_REF_NAME") == "main") {
+            // Only update the main cache image when building the main branch.
+            val env = System.getenv()
+            val refName = env["GITHUB_REF_NAME"] ?: ""
+            val refType = env["GITHUB_REF_TYPE"] ?: ""
+            if (refName == "main") {
                 additionalArguments.addAll(
                     listOf(
                         "--export-cache",
@@ -173,7 +180,8 @@ class BuildCtlPlugin : Plugin<Project> {
                     )
                 )
             }
-            else if (System.getenv("GITHUB_REF_NAME").isNotBlank() && System.getenv("GITHUB_REF_TYPE") == "branch") {
+            else if (refName.isNotBlank() && refType == "branch") {
+                // Non-main branch cache.
                 additionalArguments.addAll(
                     listOf(
                         "--import-cache",

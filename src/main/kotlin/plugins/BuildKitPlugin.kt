@@ -26,6 +26,8 @@ class BuildKitPlugin : Plugin<Project> {
 
     companion object {
 
+        private fun String.normalizeDockerTag() = this.replace("""[^a-zA-Z0-9._-]""".toRegex(), "-")
+
         // The name of the container that is running the buildkit daemon.
         val Project.buildKitBuilder: Provider<String>
             get() = rootProject.tasks.named<DockerStartContainer>("startBuilder").map { it.name.get() }
@@ -42,7 +44,15 @@ class BuildKitPlugin : Plugin<Project> {
 
         // The tag to use when building/pushing images.
         val Project.buildKitTag: String
-            get() = (properties.getOrDefault("isle.buildkit.build-arg.tag", "latest") as String).replace("""[^a-zA-Z0-9._-]""".toRegex(), "-")
+            get() = (properties.getOrDefault("isle.buildkit.build-arg.tag", "latest") as String).normalizeDockerTag()
+
+        // The tag to use when building/pushing images.
+        val Project.buildKitImages: Set<String>
+            get() = (properties.getOrDefault("isle.buildkit.images", "") as String)
+                .split(',')
+                .map { it.trim().normalizeDockerTag() }
+                .filter { it.isNotEmpty() }
+                .toSet()
 
         // The repository to push/pull image cache to/from.
         val Project.buildKitCacheRepository: String
