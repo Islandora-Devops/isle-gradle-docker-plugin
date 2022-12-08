@@ -7,6 +7,7 @@ import org.gradle.api.tasks.Delete
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withGroovyBuilder
+import plugins.BuildKitPlugin.Companion.normalizeDockerTag
 import java.io.ByteArrayOutputStream
 
 @Suppress("unused")
@@ -26,6 +27,12 @@ class IslePlugin : Plugin<Project> {
         // Check if the project should have docker related tasks.
         val Project.isDockerProject: Boolean
             get() = projectDir.resolve("Dockerfile").exists()
+
+        val Project.commit: String
+            get() = execCaptureOutput(listOf("git", "rev-parse", "HEAD"), "Failed to get commit hash.")
+
+        val Project.branch: String
+            get() = execCaptureOutput(listOf("git", "rev-parse", "--abbrev-ref", "HEAD"), "Failed to get branch.").normalizeDockerTag()
     }
 
     override fun apply(pluginProject: Project): Unit = pluginProject.run {

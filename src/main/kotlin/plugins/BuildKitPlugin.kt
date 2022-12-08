@@ -24,9 +24,10 @@ import tasks.Download
 @Suppress("unused")
 class BuildKitPlugin : Plugin<Project> {
 
+
     companion object {
 
-        private fun String.normalizeDockerTag() = this.replace("""[^a-zA-Z0-9._-]""".toRegex(), "-")
+        fun String.normalizeDockerTag() = this.replace("""[^a-zA-Z0-9._-]""".toRegex(), "-")
 
         // The name of the container that is running the buildkit daemon.
         val Project.buildKitBuilder: Provider<String>
@@ -54,14 +55,11 @@ class BuildKitPlugin : Plugin<Project> {
                 .filter { it.isNotEmpty() }
                 .toSet()
 
-        // The repository to push/pull image cache to/from.
-        val Project.buildKitCacheRepository: String
-            get() = properties.getOrDefault("isle.buildkit.cache.repository", "islandora") as String
+        // Load images after building, if not specified images will be pulled instead by tasks that require them.
+        val Project.buildKitLoad: Boolean
+            get() = (properties.getOrDefault("isle.buildkit.load", "true") as String).toBoolean()
 
-        // The repository to push/pull image cache to/from.
-        val Project.buildKitCacheTag: String
-            get() = properties.getOrDefault("isle.buildkit.cache.tag", "cache") as String
-
+        // Builder properties.
         val Project.buildKitContainer: String
             get() = properties.getOrDefault("isle.buildkit.container", "isle-buildkit") as String
 
@@ -69,19 +67,80 @@ class BuildKitPlugin : Plugin<Project> {
             get() = properties.getOrDefault("isle.buildkit.volume", "isle-buildkit") as String
 
         val Project.buildKitImage: String
-            get() = properties.getOrDefault("isle.buildkit.image", "moby/buildkit:v0.10.6") as String
+            get() = properties.getOrDefault("isle.buildkit.image", "moby/buildkit:v0.11.0-rc1") as String
 
+        // Only applies to linux hosts, Docker Desktop comes bundled with Qemu.
+        // Allows us to build cross platform images by emulating the target platform.
         val Project.buildKitQemuImage: String
             get() = properties.getOrDefault("isle.buildkit.qemu.image", "tonistiigi/binfmt:qemu-v7.0.0-28") as String
 
+        // The platforms to build images for, If unspecified it will target the
+        // host platform. It is possible to target multiple platforms as builder
+        // will use emulation for architectures that do no match the host.
         val Project.buildKitPlatforms: Set<String>
             get() = (properties.getOrDefault("isle.buildkit.platforms", "") as String)
                 .split(',')
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .toSet()
-    }
 
+        // Enable registry cache.
+        val Project.buildKitCacheRegistryEnable: Boolean
+            get() = (properties.getOrDefault("isle.buildkit.cache.registry.enable", "false") as String).toBoolean()
+
+        // The repository to push/pull image cache to/from.
+        val Project.buildKitCacheRegistryRepository: String
+            get() = properties.getOrDefault("isle.buildkit.cache.registry.repository", "islandora") as String
+
+        // Specify cache layers to export
+        // - min: only export layers for the resulting image
+        // - max: export all the layers of all intermediate steps
+        val Project.buildKitCacheRegistryMode: String
+            get() = properties.getOrDefault("isle.buildkit.cache.registry.mode", "max") as String
+
+        // Compression type for layers newly created and cached.
+        // estargz should be used with oci-mediatypes=true.
+        val Project.buildKitCacheRegistryCompression: String
+            get() = properties.getOrDefault("isle.buildkit.cache.registry.compression", "estargz") as String
+
+        // Compression level for gzip, estargz (0-9) and zstd (0-22)
+        val Project.buildKitCacheRegistryCompressionLevel: Int
+            get() = (properties.getOrDefault("isle.buildkit.cache.registry.compression-level", "5") as String).toInt()
+
+        // The repository to push/pull image cache to/from.
+        val Project.buildKitCacheRegistryUser: String
+            get() = properties.getOrDefault("isle.buildkit.cache.registry.user", "") as String
+
+        // The repository to push/pull image cache to/from.
+        val Project.buildKitCacheRegistryPassword: String
+            get() = properties.getOrDefault("isle.buildkit.cache.registry.password", "") as String
+
+        // Enable s3 cache.
+        val Project.buildKitCacheS3Enable: Boolean
+            get() = (properties.getOrDefault("isle.buildkit.cache.s3.enable", "true") as String).toBoolean()
+
+        val Project.buildKitCacheS3Region: String
+            get() = properties.getOrDefault("isle.buildkit.cache.s3.region", "us-east-1") as String
+
+        val Project.buildKitCacheS3Bucket: String
+            get() = properties.getOrDefault("isle.buildkit.cache.s3.bucket", "isle-build-cache") as String
+
+        val Project.buildKitCacheS3Endpoint: String
+            get() = properties.getOrDefault("isle.buildkit.cache.s3.endpoint_url", "https://nyc3.digitaloceanspaces.com") as String
+
+        // Specify cache layers to export
+        // - min: only export layers for the resulting image
+        // - max: export all the layers of all intermediate steps
+        val Project.buildKitCacheS3Mode: String
+            get() = properties.getOrDefault("isle.buildkit.cache.s3.mode", "max") as String
+
+        // Required to populate the cache.
+        val Project.buildKitCacheS3AccessKey: String
+            get() = properties.getOrDefault("isle.buildkit.cache.s3.access_key_id", "") as String
+
+        val Project.buildKitCacheS3Secret: String
+            get() = properties.getOrDefault("isle.buildkit.cache.s3.secret_access_key", "") as String
+    }
     open class DockerBuildKitExtension constructor(objects: ObjectFactory, providers: ProviderFactory) {
         open class BuildKitExtension(private val name: String) : Named {
             var sha256: String = ""

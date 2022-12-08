@@ -12,12 +12,27 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.*
 import org.gradle.kotlin.dsl.*
-import plugins.BuildKitPlugin.Companion.buildKitCacheRepository
-import plugins.BuildKitPlugin.Companion.buildKitCacheTag
+import plugins.BuildKitPlugin.Companion.buildKitCacheRegistryCompression
+import plugins.BuildKitPlugin.Companion.buildKitCacheRegistryCompressionLevel
+import plugins.BuildKitPlugin.Companion.buildKitCacheRegistryEnable
+import plugins.BuildKitPlugin.Companion.buildKitCacheRegistryMode
+import plugins.BuildKitPlugin.Companion.buildKitCacheRegistryPassword
+import plugins.BuildKitPlugin.Companion.buildKitCacheRegistryRepository
+import plugins.BuildKitPlugin.Companion.buildKitCacheRegistryUser
+import plugins.BuildKitPlugin.Companion.buildKitCacheS3AccessKey
+import plugins.BuildKitPlugin.Companion.buildKitCacheS3Bucket
+import plugins.BuildKitPlugin.Companion.buildKitCacheS3Enable
+import plugins.BuildKitPlugin.Companion.buildKitCacheS3Endpoint
+import plugins.BuildKitPlugin.Companion.buildKitCacheS3Mode
+import plugins.BuildKitPlugin.Companion.buildKitCacheS3Region
+import plugins.BuildKitPlugin.Companion.buildKitCacheS3Secret
 import plugins.BuildKitPlugin.Companion.buildKitImages
+import plugins.BuildKitPlugin.Companion.buildKitLoad
 import plugins.BuildKitPlugin.Companion.buildKitPlatforms
 import plugins.BuildKitPlugin.Companion.buildKitRepository
 import plugins.BuildKitPlugin.Companion.buildKitTag
+import plugins.IslePlugin.Companion.branch
+import plugins.IslePlugin.Companion.commit
 import tasks.BuildCtl
 
 
@@ -154,6 +169,7 @@ class BuildCtlPlugin : Plugin<Project> {
         @TaskAction
         fun build() {
             val additionalArguments = mutableListOf<String>()
+
             if (platforms.get().isNotEmpty()) {
                 additionalArguments.addAll(
                     listOf(
@@ -161,41 +177,73 @@ class BuildCtlPlugin : Plugin<Project> {
                     )
                 )
             }
-            // Always pull from the main cache.
-            additionalArguments.addAll(
-                listOf(
-                    "--import-cache",
-                    "type=registry,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
-                )
-            )
-            // Only update the main cache image when building the main branch.
-            val env = System.getenv()
-            val refName = env["GITHUB_REF_NAME"] ?: ""
-            val refType = env["GITHUB_REF_TYPE"] ?: ""
-            if (refName == "main") {
-                additionalArguments.addAll(
-                    listOf(
-                        "--export-cache",
-                        "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}",
-                    )
-                )
-            }
-            else if (refName.isNotBlank() && refType == "branch") {
-                // Non-main branch cache.
+
+            if (project.buildKitCacheRegistryEnable) {
+                // Always look for cache hits in latest, for when a new branch is created from 'main' i.e. latest.
                 additionalArguments.addAll(
                     listOf(
                         "--import-cache",
-                        "type=registry,ref=${project.buildKitCacheRepository}/${project.name}:${tag.get()}",
-                        "--export-cache",
-                        "type=registry,mode=max,compression=estargz,ref=${project.buildKitCacheRepository}/${project.name}:${project.buildKitCacheTag}-${tag.get()}",
+                        "type=registry,ref=${project.buildKitCacheRegistryRepository}/${project.name}:cache", // Populated by 'latest'
                     )
                 )
+                val cacheTag = if (tag.get() == "latest") "cache" else "cache-${tag.get()}"
+                // If building something other than latest also add the cache tag for that.
+                if (cacheTag != "cache") {
+                    additionalArguments.addAll(
+                        listOf(
+                            "--import-cache",
+                            "type=registry,ref=${project.buildKitCacheRegistryRepository}/${project.name}:${cacheTag}",
+                        )
+                    )
+                }
+                if (project.buildKitCacheRegistryUser.isNotBlank() && project.buildKitCacheRegistryPassword.isNotBlank()) {
+                    additionalArguments.addAll(
+                        listOf(
+                            "--export-cache",
+                            "type=registry,mode=${project.buildKitCacheRegistryMode},compression=${project.buildKitCacheRegistryCompression},compression-level=${project.buildKitCacheRegistryCompressionLevel},ref=${project.buildKitCacheRegistryRepository}/${project.name}:${cacheTag}",
+                        )
+                    )
+                }
+                else {
+                    logger.info("Both 'isle.buildkit.cache.registry.repository.user' and 'isle.buildkit.cache.registry.repository.password' must be provided to push to the repository cache.")
+                }
             }
+
+            // Only update the main cache image when building the main branch.
+            if (project.buildKitCacheS3Enable) {
+                val s3SharedAttributes = "type=s3,region=${project.buildKitCacheS3Region},bucket=${project.buildKitCacheS3Bucket},endpoint_url=${project.buildKitCacheS3Endpoint}"
+                // Import does not require credentials.
+                // Branch is used as fallback if commit hash is not found.
+                listOf(project.commit, project.branch).forEach { name ->
+                    additionalArguments.addAll(
+                        listOf(
+                            "--import-cache",
+                            """${s3SharedAttributes},name=${name},"access_key_id=${project.buildKitCacheS3AccessKey}","secret_access_key=${project.buildKitCacheS3Secret}""""
+                        )
+                    )
+                }
+                // Create cache entry for commit and branch on per-project bases.
+                if (project.buildKitCacheS3AccessKey.isNotEmpty() && project.buildKitCacheS3Secret.isNotEmpty()) {
+                    val name = listOf(project.commit, project.branch).joinToString(";")
+                    additionalArguments.addAll(
+                        listOf(
+                            "--export-cache",
+                            """${s3SharedAttributes},mode=${project.buildKitCacheS3Mode},"access_key_id=${project.buildKitCacheS3AccessKey}","secret_access_key=${project.buildKitCacheS3Secret}",name=${name}""",
+                        )
+                    )
+                }
+                else {
+                    logger.info("Both 'isle.buildkit.cache.s3.access_key_id' and 'isle.buildkit.cache.s3.secret_access_key' must be provided to push to the S3 cache.")
+                }
+            }
+
+
             images.get().joinToString(",").let {
                 additionalArguments.addAll(
                     listOf("--output", """type=image,"name=$it",push=true""")
                 )
             }
+
             project.exec {
                 workingDir(project.projectDir)
                 environment(hostEnvironmentVariables)
@@ -257,7 +305,9 @@ class BuildCtlPlugin : Plugin<Project> {
         val build by tasks.registering(BuildCtlBuildImage::class) {
             group = "Isle"
             description = "Build docker image(s)"
-            finalizedBy("load")
+            if (project.buildKitLoad) {
+                finalizedBy("load")
+            }
         }
 
         tasks.register<BuildCtlLoadImage>("load") {
