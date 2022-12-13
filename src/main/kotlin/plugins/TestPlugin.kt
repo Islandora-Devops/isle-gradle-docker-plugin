@@ -125,7 +125,7 @@ class TestPlugin : Plugin<Project> {
                 output
                     .toString()
                     .lines()
-                    .filter { it.isNotEmpty() }
+                    .filter { it.isNotBlank() }
             }
         }
 

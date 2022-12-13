@@ -116,7 +116,7 @@ class ReportPlugin : Plugin<Project> {
                         command.addAll(listOf("--config", "/grype.yaml"))
                     }
                     // Arguments to grype.
-                    if (failOn.isPresent) {
+                    if (failOn.get().isNotBlank()) {
                         command.addAll(listOf("--fail-on", failOn.get()))
                     }
                     if (onlyFixed.get()) {

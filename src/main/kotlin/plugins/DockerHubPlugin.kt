@@ -32,7 +32,7 @@ import javax.inject.Inject
 class DockerHubPlugin : Plugin<Project> {
     companion object {
         // User to use when authenticating against DockerHub.
-        val Project.dockerHubUsername: String?
+        val Project.dockerHubUsername: String
             get() = properties.getOrDefault("isle.dockerhub.user", "islandoracommunity") as String
 
         // Personal access token use to log in to DockerHub.
@@ -52,8 +52,7 @@ class DockerHubPlugin : Plugin<Project> {
         val Project.dockerHubProtectedTags: Set<String>
             get() = (properties.getOrDefault("isle.dockerhub.protected.tags", "") as String)
                 .split(',')
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
+                .filter { it.isNotBlank() }
                 .toSet()
     }
 
@@ -106,7 +105,7 @@ class DockerHubPlugin : Plugin<Project> {
             val imageTags: Set<String> = (gitTags + gitBranches + gitBranchCaches + excludeTags.get())
                 .plus("cache") // Never delete main cache tag
                 .plus("latest") // Never delete latest
-                .filter { it.isNotEmpty() }
+                .filter { it.isNotBlank() }
                 .toSet()
 
             protectedTagsFile.get().asFile.writeText(imageTags.joinToString("\n"))

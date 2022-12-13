@@ -3,8 +3,10 @@ package plugins
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.logging.LogLevel
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Delete
 import org.gradle.kotlin.dsl.apply
+import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withGroovyBuilder
 import plugins.BuildKitPlugin.Companion.normalizeDockerTag
@@ -28,11 +30,23 @@ class IslePlugin : Plugin<Project> {
         val Project.isDockerProject: Boolean
             get() = projectDir.resolve("Dockerfile").exists()
 
-        val Project.commit: String
-            get() = execCaptureOutput(listOf("git", "rev-parse", "HEAD"), "Failed to get commit hash.")
+        val Project.commit: Property<String>
+            get() = memoizedProperty {
+                execCaptureOutput(listOf("git", "rev-parse", "HEAD"), "Failed to get commit hash.")
+            }
 
-        val Project.branch: String
-            get() = execCaptureOutput(listOf("git", "rev-parse", "--abbrev-ref", "HEAD"), "Failed to get branch.").normalizeDockerTag()
+        val Project.branch: Property<String>
+            get() = memoizedProperty {
+                execCaptureOutput(
+                    listOf("git", "rev-parse", "--abbrev-ref", "HEAD"),
+                    "Failed to get branch."
+                ).normalizeDockerTag()
+            }
+
+        val Project.sourceDateEpoch: Property<String>
+            get() = memoizedProperty {
+                execCaptureOutput(listOf("git", "log", "-1", "--pretty=%ct"), "Failed to get the date of HEAD")
+            }
     }
 
     override fun apply(pluginProject: Project): Unit = pluginProject.run {
@@ -71,4 +85,13 @@ class IslePlugin : Plugin<Project> {
             layout.buildDirectory.set(buildDir)
         }
     }
+}
+
+private inline fun <reified T> Project.memoizedProperty(crossinline function: () -> T): Property<T> {
+    val property = objects.property<T>().convention(provider {
+        function()
+    })
+    property.disallowChanges()
+    property.finalizeValueOnRead()
+    return property
 }
