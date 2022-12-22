@@ -1,6 +1,7 @@
 package plugins
 
 import org.gradle.api.*
+import org.gradle.api.logging.LogLevel
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.tasks.*
@@ -87,6 +88,11 @@ class CertificateGenerationPlugin : Plugin<Project> {
 
         private val executablePath: String
             get() = this@GenerateCerts.executable.get().asFile.absolutePath
+
+        init {
+            logging.captureStandardOutput(LogLevel.INFO)
+            logging.captureStandardError(LogLevel.INFO)
+        }
 
         private fun execute(vararg arguments: String) {
             project.exec {

@@ -2,20 +2,20 @@ package plugins
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.logging.LogLevel
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Delete
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withGroovyBuilder
-import plugins.BuildKitPlugin.Companion.normalizeDockerTag
 import java.io.ByteArrayOutputStream
 
 @Suppress("unused")
 class IslePlugin : Plugin<Project> {
 
     companion object {
+        fun String.normalizeDockerTag() = this.replace("""[^a-zA-Z0-9._-]""".toRegex(), "-")
+
         // Capture stdout from running a command.
         fun Project.execCaptureOutput(command: List<String>, error: String) = ByteArrayOutputStream().use { output ->
             val result = this.exec {
@@ -50,33 +50,22 @@ class IslePlugin : Plugin<Project> {
     }
 
     override fun apply(pluginProject: Project): Unit = pluginProject.run {
-        apply<BuildKitPlugin>()
+        apply<DockerHubPlugin>()
+        apply<BuildPlugin>()
         apply<ReportsPlugin>()
         apply<TestsPlugin>()
-        apply<DockerHubPlugin>()
-
-        extensions.findByName("buildScan")?.withGroovyBuilder {
-            setProperty("termsOfServiceUrl", "https://gradle.com/terms-of-service")
-            setProperty("termsOfServiceAgree", "yes")
-        }
 
         // Return repository to initial "clean" state.
         tasks.register<Delete>("clean") {
             group = "Isle"
             description = "Destroy absolutely everything"
             delete(layout.buildDirectory)
-            dependsOn("destroyBuilderVolume", "destroyRegistryVolume")
+            dependsOn("pruneBuildCache", "destroyBuilder", "destroyRegistryVolume", "destroyRegistryNetwork")
         }
 
-        allprojects {
-            // Defaults for all tasks created by this plugin.
-            tasks.configureEach {
-                val displayOutputExceptions = listOf("diskUsage", "prune")
-                if (group?.startsWith("Isle") == true && !displayOutputExceptions.contains(name)) {
-                    logging.captureStandardOutput(LogLevel.INFO)
-                    logging.captureStandardError(LogLevel.INFO)
-                }
-            }
+        extensions.findByName("buildScan")?.withGroovyBuilder {
+            setProperty("termsOfServiceUrl", "https://gradle.com/terms-of-service")
+            setProperty("termsOfServiceAgree", "yes")
         }
 
         // Make all build directories relative to the root, only supports projects up to a depth of one for now.
@@ -87,10 +76,10 @@ class IslePlugin : Plugin<Project> {
     }
 }
 
-private inline fun <reified T> Project.memoizedProperty(crossinline function: () -> T): Property<T> {
-    val property = objects.property<T>().convention(provider {
-        function()
-    })
+inline fun <reified T> Project.memoizedProperty(crossinline function: () -> T): Property<T> {
+    val property = objects.property<T>()
+    val value: T by lazy { function() }
+    property.set(value)
     property.disallowChanges()
     property.finalizeValueOnRead()
     return property

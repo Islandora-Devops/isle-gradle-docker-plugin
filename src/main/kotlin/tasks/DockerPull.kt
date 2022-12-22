@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.commons.io.output.NullOutputStream
 import org.gradle.api.DefaultTask
+import org.gradle.api.logging.LogLevel
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -38,6 +39,9 @@ open class DockerPull : DefaultTask() {
     }
 
     init {
+        logging.captureStandardOutput(LogLevel.INFO)
+        logging.captureStandardError(LogLevel.INFO)
+
         outputs.upToDateWhen {
             exists()
         }

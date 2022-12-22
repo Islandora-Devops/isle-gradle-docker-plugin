@@ -34,18 +34,11 @@ gradlePlugin {
             description = "Main gradle plugin for the Islandora Isle project"
             tags.set(listOf("isle"))
         }
-        create("IsleBuildCtl") {
-            id = "io.github.nigelgbanks.IsleBuildCtl"
-            implementationClass = "plugins.BuildCtlPlugin"
-            displayName = "IsleBuildCtl"
-            description = "Wrapper around buildctrl for use with buildkit"
-            tags.set(listOf("isle"))
-        }
-        create("IsleBuildKit") {
-            id = "io.github.nigelgbanks.IsleBuildKit"
-            implementationClass = "plugins.BuildKitPlugin"
-            displayName = "IsleBuildKit"
-            description = "Provides buildkit backend via a Docker container"
+        create("IsleBuild") {
+            id = "io.github.nigelgbanks.IsleBuild"
+            implementationClass = "plugins.BuilPlugin"
+            displayName = "IsleBuild"
+            description = "Build docker images with buildkit."
             tags.set(listOf("isle"))
         }
         create("IsleCertificateGeneration") {
@@ -76,10 +69,10 @@ gradlePlugin {
             description = "Provides local Docker Registry"
             tags.set(listOf("isle"))
         }
-        create("IsleTest") {
-            id = "io.github.nigelgbanks.IsleTest"
-            implementationClass = "plugins.TestPlugin"
-            displayName = "IsleTest"
+        create("IsleTests") {
+            id = "io.github.nigelgbanks.IsleTests"
+            implementationClass = "plugins.TestsPlugin"
+            displayName = "IsleTests"
             description = "Perform tests with docker-compose files"
             tags.set(listOf("isle"))
         }
