@@ -74,6 +74,11 @@ class BuildPlugin : Plugin<Project> {
 
         // Pushing may require logging in to the repository, if so these need to be populated.
         // The local registry does not require credentials.
+        val Project.isleBuildRegistryHost: String
+            get() = properties.getOrDefault("isle.build.registry.host", "docker.io") as String
+
+        // Pushing may require logging in to the repository, if so these need to be populated.
+        // The local registry does not require credentials.
         val Project.isleBuildRegistryUser: String
             get() = properties.getOrDefault("isle.build.registry.user", "") as String
 
@@ -909,7 +914,7 @@ class BuildPlugin : Plugin<Project> {
             group = "Isle Build"
             description = "Starts the `docker-container builder if applicable"
             standardInput = ByteArrayInputStream(project.isleBuildRegistryPassword.toByteArray())
-            commandLine = listOf("docker", "login", "--username", project.isleBuildRegistryUser, "--password-stdin", project.isleBuildRegistry.get())
+            commandLine = listOf("docker", "login", "--username", project.isleBuildRegistryUser, "--password-stdin", project.isleBuildRegistryHost)
             onlyIf {
                 project.isleBuildRegistryUser.isNotBlank() && project.isleBuildRegistryPassword.isNotBlank()
             }
