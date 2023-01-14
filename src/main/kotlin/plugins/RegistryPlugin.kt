@@ -102,7 +102,7 @@ class RegistryPlugin : Plugin<Project> {
             description = "Destroys the local registry"
             name.set(registryContainer)
             dependsOn(stopRegistry)
-            finalizedBy("destroyRegistryNetwork")
+            finalizedBy("destroyRegistryNetwork", "destroyRegistryVolume")
         }
 
         val destroyRegistryVolume by tasks.registering(DockerRemoveVolume::class) {
