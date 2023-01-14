@@ -36,7 +36,7 @@ gradlePlugin {
         }
         create("IsleBuild") {
             id = "io.github.nigelgbanks.IsleBuild"
-            implementationClass = "plugins.BuilPlugin"
+            implementationClass = "plugins.BuildPlugin"
             displayName = "IsleBuild"
             description = "Build docker images with buildkit."
             tags.set(listOf("isle"))
