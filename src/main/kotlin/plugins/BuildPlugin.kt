@@ -939,7 +939,13 @@ class BuildPlugin : Plugin<Project> {
             group = "Isle Build"
             description = "Build docker image(s)"
             options.set(resolveTargets.map { it.options })
-            builder.set(createBuilder.flatMap { it.name })
+            // Works with both docker driver as well so change the default name.
+            if (project.isDefaultDriver) {
+                builder.set("default")
+            }
+            else {
+                builder.set(createBuilder.flatMap { it.name })
+            }
             dependsOn(login, startBuilder)
         }
     }
