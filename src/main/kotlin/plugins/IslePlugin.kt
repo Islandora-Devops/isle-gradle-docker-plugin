@@ -18,13 +18,21 @@ class IslePlugin : Plugin<Project> {
         fun String.normalizeDockerTag() = this.replace("""[^a-zA-Z0-9._-]""".toRegex(), "-")
 
         // Capture stdout from running a command.
-        fun Project.execCaptureOutput(command: List<String>, error: String) = ByteArrayOutputStream().use { output ->
-            val result = this.exec {
-                standardOutput = output
-                commandLine = command
+        fun Project.execCaptureOutput(command: List<String>, message: String) = ByteArrayOutputStream().use { output ->
+            ByteArrayOutputStream().use { error ->
+                val result = this.exec {
+                    standardOutput = output
+                    errorOutput = error
+                    commandLine = command
+                }
+                error.toString().let {
+                    if (it.isNotBlank()) {
+                        logger.info(it)
+                    }
+                }
+                if (result.exitValue != 0) throw RuntimeException(message)
+                output.toString()
             }
-            if (result.exitValue != 0) throw RuntimeException(error)
-            output.toString()
         }.trim()
 
         // Check if the project should have docker related tasks.
