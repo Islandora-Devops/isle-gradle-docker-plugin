@@ -44,19 +44,15 @@ class IslePlugin : Plugin<Project> {
                 }
             }
 
-        private val Project.tags: Property<List<String>>
+        // Latest is true if HEAD is a tag and that tag has the highest semantic value.
+        val Project.latest: Property<Boolean>
             get() = memoizedProperty {
-                execCaptureOutput(listOf("git", "tag", "-l", "*.*.*", "--sort=version:refname"),  "Could not get tags.")
+                val tags = execCaptureOutput(listOf("git", "tag", "-l", "*.*.*", "--sort=version:refname"),  "Could not get tags.")
                     .lines()
                     .filter {
                         !it.contains("-") // Exclude alpha, betas, etc
                     }
-            }
-
-        // Latest is true if HEAD is a tag and that tag has the highest semantic value.
-        val Project.latest: Property<Boolean>
-            get() = memoizedProperty {
-                tags.get().last() == tag.get()
+                tags.last() == tag.get()
             }
 
         val Project.commit: Property<String>
