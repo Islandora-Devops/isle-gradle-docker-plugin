@@ -772,13 +772,13 @@ class BuildPlugin : Plugin<Project> {
             // Import S3 cache(s)?
             if (project.isleBuildCacheS3EnableImport) {
                 // Branch is used as fallback if commit hash is not found.
-                listOf(project.commit, project.branch).forEach { name ->
+                listOf(project.commit, project.branch).map { it.get() }.forEach { name ->
                     arguments.addAll(
                         listOf(
                             "--set",
                             listOf(
                                 "${target}.cache-from=type=s3",
-                                "name=${name.get()}"
+                                "name=${name}"
                             ).plus(commonAttributes).joinToString(",")
                         )
                     )
@@ -786,7 +786,7 @@ class BuildPlugin : Plugin<Project> {
             }
             // Export S3 cache?
             if (project.isleBuildCacheS3EnableExport) {
-                val names = listOf(project.commit, project.branch).joinToString(";")
+                val names = listOf(project.commit, project.branch).map { it.get() }.joinToString(";")
                 arguments.addAll(
                     listOf(
                         "--set", listOf(
