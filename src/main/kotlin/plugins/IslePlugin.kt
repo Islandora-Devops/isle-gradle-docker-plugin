@@ -2,6 +2,7 @@ package plugins
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Delete
 import org.gradle.kotlin.dsl.apply
@@ -29,6 +30,34 @@ class IslePlugin : Plugin<Project> {
         // Check if the project should have docker related tasks.
         val Project.isDockerProject: Boolean
             get() = projectDir.resolve("Dockerfile").exists()
+
+        val Project.tag: Property<String>
+            get() = memoizedProperty {
+                try {
+                    execCaptureOutput(
+                        listOf("git", "describe", "--exact-match", "--tags", "HEAD"),
+                        "HEAD is not a tag."
+                    )
+                }
+                catch (e: Exception) {
+                    ""
+                }
+            }
+
+        private val Project.tags: Property<List<String>>
+            get() = memoizedProperty {
+                execCaptureOutput(listOf("git", "tag", "-l", "*.*.*", "--sort=version:refname"),  "Could not get tags.")
+                    .lines()
+                    .filter {
+                        !it.contains("-") // Exclude alpha, betas, etc
+                    }
+            }
+
+        // Latest is true if HEAD is a tag and that tag has the highest semantic value.
+        val Project.latest: Property<Boolean>
+            get() = memoizedProperty {
+                tags.get().last() == tag.get()
+            }
 
         val Project.commit: Property<String>
             get() = memoizedProperty {

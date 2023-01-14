@@ -19,8 +19,10 @@ import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import plugins.BuildPlugin.BakeOptions.BakeOptionsFile
 import plugins.IslePlugin.Companion.branch
 import plugins.IslePlugin.Companion.commit
+import plugins.IslePlugin.Companion.latest
 import plugins.IslePlugin.Companion.normalizeDockerTag
 import plugins.IslePlugin.Companion.sourceDateEpoch
+import plugins.IslePlugin.Companion.tag
 import tasks.DockerContainer
 import tasks.DockerNetwork
 import java.io.ByteArrayInputStream
@@ -88,11 +90,31 @@ class BuildPlugin : Plugin<Project> {
 
         // The tag to use when building/pushing images.
         val Project.isleBuildTags: Set<String>
-            get() = (properties.getOrDefault("isle.build.tags", "local") as String)
-                .split(',')
-                .map { it.trim().normalizeDockerTag() }
-                .filter { it.isNotEmpty() }
-                .toSet()
+            get() {
+                val default = if (tag.get().matches("""[0-9]+\.[0-9]+\.[0-9]+""".toRegex())) {
+                    val tags = mutableListOf(tag.get())
+                    val components = tag.get().split(".")
+                    val major = components[0]
+                    val minor = components[1]
+                    tags.add("$major.$minor")
+                    tags.add(major)
+                    if (latest.get()) {
+                        tags.add("latest")
+                    }
+                    tags.joinToString(",")
+                }
+                else {
+                    branch.get()
+                }
+                return (properties.getOrDefault("isle.build.tags", "") as String).let {
+                    it.ifBlank {
+                        default
+                    }
+                }.split(',')
+                    .map { it.trim().normalizeDockerTag() }
+                    .filter { it.isNotEmpty() }
+                    .toSet()
+            }
 
         // Load images after building, if not specified images will be pulled instead by tasks that require them.
         val Project.isleBuildLoad: Boolean
